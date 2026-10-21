@@ -9,6 +9,7 @@ import base64
 import datetime as dt
 import hashlib
 import hmac
+import ipaddress
 import json
 import logging
 import os
@@ -176,8 +177,22 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("X-Frame-Options", "DENY")
         super().end_headers()
 
+    def origin_allowed(self):
+        """Accept our own private-LAN page origin, or configured trusted origin."""
+        origin = self.headers.get("Origin")
+        if not origin or origin == ALLOWED_ORIGIN:
+            return True
+        host = self.headers.get("Host", "")
+        if origin != "http://" + host:
+            return False
+        try:
+            name = urlsplit(origin).hostname
+            return name == "localhost" or ipaddress.ip_address(name).is_private
+        except (ValueError, TypeError):
+            return False
+
     def do_OPTIONS(self):
-        if self.headers.get("Origin") not in ("", ALLOWED_ORIGIN):
+        if not self.origin_allowed():
             return self.json_response(403, {"error": "Origin not allowed"})
         self.send_response(204); self.end_headers()
 
@@ -273,7 +288,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urlsplit(self.path).path
-        if self.headers.get("Origin") not in (None, ALLOWED_ORIGIN):
+        if not self.origin_allowed():
             return self.json_response(403, {"error": "Origin not allowed"})
         try:
             body = self.data()
