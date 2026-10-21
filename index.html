@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>인허가 검토 통합관리 | V9.3</title>
+<link rel="stylesheet" href="/style.css">
+<script src="/auth.js" defer></script>
+<script src="/app.js" defer></script>
+<script src="/v9.js" defer></script>
+</head>
+<body>
+<div id="auth-gate" class="auth-gate">
+  <div class="auth-card">
+    <div class="auth-brand"><span class="auth-mark">P</span><div><b>인허가 검토관리</b><p>요청자 / 인허가팀 직원 로그인 · V9 시험용</p></div></div>
+    <div class="auth-intro" id="auth-intro">사용자 로그인</div>
+    <form id="login-form" class="auth-form">
+      <label>회사 이메일 앞부분</label><div class="email-combo"><input required id="login-username" autocomplete="username" placeholder="예: hong.gildong"><span>@hdc-resort.com</span></div>
+      <label>비밀번호</label><input required id="login-password" type="password" autocomplete="current-password">
+      <div id="lan-test-code-wrap" class="field" hidden>
+        <label for="lan-test-code">처음 접속할 때만: 공동 테스트 참여코드</label>
+        <input id="lan-test-code" type="text" autocomplete="off" placeholder="서버 PC 담당자에게 받은 참여코드">
+      </div>
+      <button class="button primary wide" type="submit">로그인</button>
+      <p class="hint">시험용: 처음 입력한 아이디는 일반 직원 계정으로 자동 생성됩니다. 비밀번호는 8자 이상으로 지정하고, 다음부터 같은 비밀번호로 로그인해 주세요. 실제 회사 이메일 비밀번호는 입력하지 마세요.</p>
+    </form>
+    <div class="auth-error" id="auth-error" role="alert"></div>
+    <p class="auth-footer">내부 기능 시험용 · 실제 메일 미발송 · 외부 인터넷 공개 금지</p>
+  </div>
+</div>
+<div class="layout" id="workspace-layout" hidden>
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-icon">P</div><div><strong>인허가 검토관리</strong><small>PERMIT REVIEW WORKSPACE · V9.3</small></div></div>
+    <div class="nav-section">업무 메뉴</div>
+    <button type="button" class="nav-btn active" data-page="new"><span>▤</span> 신규 검토 요청</button>
+    <button type="button" class="nav-btn" data-page="list"><span>▦</span> 검토 요청 리스트 <b id="nav-total">0</b></button>
+    <button type="button" data-role="team" class="nav-btn" data-page="team"><span>◈</span> 인허가팀 검토함 <b id="nav-pending">0</b></button>
+    <button type="button" data-role="team" class="nav-btn" data-page="archive"><span>▤</span> 전체 문의 · 답변 이력</button>
+    <button type="button" data-role="team" class="nav-btn" data-page="sites"><span>▧</span> 변경이력</button>
+    <div class="nav-section" data-role="team">데이터 관리</div>
+    <button type="button" data-role="team" class="nav-btn" data-page="backup"><span>▣</span> 백업 · 보관 위치</button>
+    <button type="button" data-role="admin" class="nav-btn" data-page="users"><span>♙</span> 사용자 · 권한 관리</button>
+    <div class="sidebar-bottom"><span class="side-chip">● PC 단독/사내망 공동 시험형 V9</span><p>회사 메일 미연동 · 컴퓨터를 껐다 켜도 자료 유지</p><p>운영 환경이 아닌 내부 검증용 버전입니다.</p></div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar"><div><span class="small-muted">WORKSPACE</span> <span class="crumb">/</span> <span id="top-title">신규 검토 요청</span></div><div class="header-right"><span class="indicator">● DB 연결됨</span><span id="current-user-label" class="user-name"></span><button id="open-password-change" type="button" data-role="admin" class="button small" hidden>비밀번호 변경</button><button id="logout-btn" type="button" class="button small">로그아웃</button></div></header>
+    <nav class="mobile-nav" aria-label="메뉴"><button data-page="new">새 요청</button><button data-page="list">이력 검색</button><button data-role="team" data-page="team">검토함</button><button data-role="team" data-page="archive">전체 문의·답변</button><button data-role="team" data-page="sites">시설별 이력</button><button data-role="team" data-page="backup">백업</button><button data-role="admin" data-page="users">계정</button></nav>
+    <main class="content">
+      <section id="page-new" class="page">
+        <div class="page-heading"><div><div class="eyebrow">NEW REQUEST</div><h1>인허가 검토 요청</h1><p>요청서 작성 후 내 검토 요청에서 진행상태와 답변을 확인하세요.</p></div><span class="mini-pill">로컬 접수</span></div>
+        <div class="notice">ⓘ 이 버전은 <b>실제 이메일을 발송하지 않습니다.</b> 요청서, 첨부파일, 검토결과가 현재 PC에 저장됩니다.</div>
+        <div class="request-layout">
+          <form id="request-form" class="panel" autocomplete="off">
+            <div class="panel-header"><div><b>검토 요청서 작성</b><p>필수 항목을 입력하고 요청 등록을 눌러 주세요.</p></div><span class="panel-step">STEP 01</span></div>
+            <div class="panel-body">
+              <div class="section-title"><i>1</i> 요청 기본정보</div>
+              <div class="row2"><div class="field"><label for="request_date">요청일자 <em>*</em></label><input required type="date" name="request_date" id="request_date"></div><div class="field"><label for="department">요청부서 <em>*</em></label><input required name="department" id="department" list="department-suggestions" placeholder="예: 시설센터" maxlength="200"><datalist id="department-suggestions"></datalist></div></div>
+              <div class="row2"><div class="field"><label for="requester">요청자 <em>*</em></label><input required name="requester" id="requester" placeholder="이름" maxlength="200"></div><div class="field"><label for="email">요청자 이메일 <em>*</em></label><div class="email-combo"><input required name="email_local" id="email_local" type="text" placeholder="이메일 앞부분" pattern="[A-Za-z0-9][A-Za-z0-9._+\-]*" maxlength="64"><span>@hdc-resort.com</span></div><small class="hint">도메인은 자동으로 고정됩니다.</small></div></div>
+              <div class="section-title second"><i>2</i> 검토 요청내용</div>
+              <div class="field"><label for="title">요청 제목 <em>*</em></label><input required name="title" id="title" placeholder="예: OOCC 건축물 위치 변경 검토" maxlength="200"></div>
+              <div class="row2"><div class="field"><label for="site">대상 사업장 · 시설</label><input name="site" id="site" placeholder="예: OOCC 하우스" maxlength="200"></div><div class="field"><label for="category">검토 분야</label><select name="category" id="category"><option value="">선택</option><option>건축·설계변경</option><option>조성계획·사업계획</option><option>관광진흥법</option><option>체육시설업</option><option>환경·산림</option><option>기타</option></select></div></div>
+              <div class="field"><label for="question">변경 요청사항 · 문의내용 <em>*</em></label><textarea required name="question" id="question" placeholder="무엇을 변경하거나 확인해야 하는지 구체적으로 작성해 주세요."></textarea></div>
+              <div class="field"><label for="current">현재 현황 (선택)</label><textarea name="current" id="current" placeholder="현재 인허가 상태, 현장 상황, 기존 운영방식을 적어 주세요."></textarea></div>
+              <div class="field"><label for="purpose">변경 필요성 · 검토 목적 (선택)</label><textarea name="purpose" id="purpose" placeholder="변경 이유와 희망 처리 방향을 적어 주세요."></textarea></div>
+              <div class="section-title second"><i>3</i> 참고자료 첨부</div>
+              <div class="upload"><label for="request-files">＋ 도면 · 사진 · PDF 파일 선택</label><input type="file" multiple id="request-files" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.hwp,.hwpx,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.dwg,.dxf"><p>한 파일당 15MB 이하 · 최초 요청은 최대 20개 · 실제 파일 저장</p><ul id="request-file-list" class="file-list"></ul></div>
+            </div>
+            <div class="form-actions"><button type="button" class="button text-button" id="sample-btn">예시 내용 입력</button><div><button type="reset" class="button">초기화</button> <button type="submit" id="submit-btn" class="button primary">검토 요청 저장 →</button></div></div>
+          </form>
+          <div class="side-area">
+            <div class="panel"><div class="panel-header"><div><b>접수 내용 미리보기</b><p>입력 중인 요청서 요약</p></div><span class="tag">LIVE</span></div><div class="panel-body"><div class="preview-card"><small>새로운 검토 요청</small><h2 id="preview-title">요청 제목을 입력해 주세요</h2><span id="preview-date">요청일자를 선택해 주세요</span></div><div class="summary-entry"><small>요청부서 · 요청자</small><b id="preview-person">미입력</b></div><div class="summary-entry"><small>사업장 · 검토 분야</small><b id="preview-meta">미입력</b></div><div class="summary-entry"><small>주요 문의사항</small><span id="preview-question">문의내용을 입력하면 이곳에 표시됩니다.</span></div><div class="summary-entry"><small>첨부 자료</small><span id="preview-files">없음</span></div></div></div>
+            <div class="panel compact"><h3>저장 이후 진행 순서</h3><div class="flow-step"><span>1</span><p><b>요청 등록</b><br>접수번호·첨부자료 저장</p></div><div class="flow-step"><span>2</span><p><b>담당자 검토</b><br>검토함에서 담당자·내용 입력</p></div><div class="flow-step"><span>3</span><p><b>검토 완료</b><br>회신 초안과 검토이력 저장</p></div><div class="warn-small">※ 메일은 발송되지 않아요. 사내 메일 연동은 추후 추가합니다.</div></div>
+          </div>
+        </div>
+      </section>
+      <section id="page-list" class="page" hidden>
+        <div class="page-heading"><div><div class="eyebrow">HISTORY & SEARCH</div><h1>내 검토 요청</h1><p id="list-scope-text">내가 요청한 건만 표시됩니다. 새 답변을 클릭하면 확인 처리돼요.</p></div><button class="button primary" data-page="new">＋ 신규 요청</button></div>
+        <div id="list-overview"><div id="stats" class="stats"></div>
+        <div class="panel list-container"><div class="filter-row"><input id="list-search" placeholder="제목 · 접수번호 검색" aria-label="검토 이력 검색"><select id="list-status" aria-label="진행 상태"><option>전체</option><option>진행중</option><option>검토완료</option><option>새 답변</option><option>보완요청</option></select><button class="button" id="refresh-list">새로고침</button></div><div id="list-results" class="results"></div><div id="list-pagination" class="archive-pagination"></div><div class="table-note">한 페이지에 5건씩 표시됩니다.</div></div></div>
+        <div id="list-detail" hidden></div>
+      </section>
+      <section id="page-team" class="page" hidden>
+        <div class="page-heading"><div><div class="eyebrow">TEAM REVIEW</div><h1>인허가팀 검토함</h1><p>요청건을 열어 담당자를 지정하고, 검토의견을 기록해 주세요.</p></div><span class="mini-pill">검토 이력 자동 저장</span></div>
+        <div class="notice">ⓘ 인허가팀 및 관리자 계정만 이 검토함과 검토 저장 기능을 사용할 수 있습니다. (로컬 PC 시험용)</div>
+        <div id="team-overview"><div class="panel list-container"><div class="filter-row"><input id="team-search" placeholder="검토할 요청 검색" aria-label="검토함 검색"><select id="team-status" aria-label="상태"><option>전체</option><option>접수</option><option>검토중</option><option>보완요청</option><option>검토완료</option></select><button class="button" id="refresh-team">새로고침</button></div><div id="team-results" class="results"></div><div id="team-pagination" class="archive-pagination"></div></div></div>
+        <div id="team-detail" hidden></div>
+      </section>
+      <section id="page-sites" class="page" hidden>
+        <div class="page-heading"><div><div class="eyebrow">CHANGE HISTORY</div><h1>변경이력</h1><p>검토분야별 또는 실제 요청한 팀별로 문의와 확정 회신을 조회합니다.</p></div></div>
+        <div class="panel list-container">
+          <div class="panel-body history-controls">
+            <label for="history-year">조회 연도</label><select id="history-year" aria-label="변경이력 조회 연도"><option value="all">전체 연도</option></select>
+            <div class="v9-tabs history-tabs"><button type="button" id="history-by-category" class="active">검토분야별</button><button type="button" id="history-by-team">팀별</button></div>
+          </div>
+          <div class="panel-body" id="v9-sites-list">변경이력 불러오는 중…</div>
+          <div class="panel-body" id="history-selected" hidden></div>
+        </div>
+      </section>
+      <section id="page-archive" class="page" hidden>
+        <div class="page-heading"><div><div class="eyebrow">ALL REQUESTS & ANSWERS</div><h1>전체 문의 · 답변 이력</h1><p>인허가팀 권한이 있는 직원만 모든 부서의 과거 문의와 검토 답변을 확인할 수 있습니다.</p></div><span class="mini-pill">팀 전용 자료실</span></div>
+        <div class="notice">ⓘ 접수 · 검토중 · 완료 건을 모두 검색할 수 있으며, 완료되지 않은 건은 답변이 미작성 또는 검토중으로 표시됩니다. 실제 메일 전송 기능은 아직 없습니다.</div>
+        <div class="archive-year-row"><label for="archive-year">조회 연도</label><select id="archive-year"><option value="all">전체 연도</option></select></div>
+        <div class="dashboard-cards" id="archive-dashboard"><div class="empty">현황 집계 중…</div></div>
+        <div class="archive-stats" id="archive-count">조회 중…</div>
+        <div class="panel list-container">
+          <form class="filter-row" id="archive-filter">
+            <input id="archive-search" placeholder="접수번호 · 제목 · 문의 내용 · 답변 · 법령 · 요청부서 검색" aria-label="전체 문의 답변 검색">
+            <select id="archive-status" aria-label="문의 진행 상태"><option>전체</option><option>접수·검토중</option><option>접수</option><option>검토중</option><option>보완요청</option><option>검토완료</option></select>
+            <button type="submit" class="button primary">검색</button>
+          </form>
+          <div id="archive-results" class="archive-results" aria-live="polite"></div>
+          <div id="archive-pagination" class="archive-pagination"></div>
+        </div>
+        <div id="archive-detail"></div>
+      </section>
+      <section id="page-backup" class="page" hidden>
+        <div class="page-heading"><div><div class="eyebrow">LOCAL DATA & BACKUP</div><h1>데이터 백업 · 관리</h1><p>컴퓨터를 종료해도 저장한 자료가 남도록 관리합니다. 실행 중 약 5분 간격으로 자동 백업을 갱신합니다.</p></div></div>
+        <div class="manage-grid">
+          <div class="panel manage-card"><div class="manage-icon">▣</div><h2>내 PC에 저장됩니다</h2><p>PC의 고정 저장 폴더에 <code>data</code> 폴더가 자동으로 만들어집니다.</p><div class="path-block">%LOCALAPPDATA%/HDC_Permit_Review/data/permit_review.sqlite3 <small>요청서 · 검토결과 · 이력</small></div><div class="path-block">data/attachments/ <small>사진 · 도면 · PDF 실제 파일</small></div><p class="smallprint">프로그램을 종료했다가 다시 실행해도 자료가 유지됩니다. 다만 고정 저장 폴더의 DB와 파일을 삭제하면 자료를 잃을 수 있습니다.</p></div>
+          <div class="panel manage-card"><div class="manage-icon">⇩</div><h2>백업 파일 받기 · 자동 백업</h2><p>요청서 DB와 첨부파일을 하나의 ZIP 파일로 다운로드합니다. 자동 백업본은 PC의 <code>data/auto_backups</code>에 날짜별로 최대 7개까지 보관되며, 실행 중 약 5분마다 당일 백업을 갱신합니다.</p><button class="button primary wide" id="backup-btn">전체 자료 ZIP 백업</button><button class="button wide" id="csv-btn">요청 · 검토 목록 CSV 저장</button><p class="smallprint">중요: ZIP 백업은 이 PC뿐 아니라 회사가 승인한 별도의 저장 위치에도 보관하세요.</p></div>
+        </div>
+        <div class="panel manage-card" style="margin-top:18px"><h2>회사 서버로 이전할 때</h2><p>백업 ZIP에는 SQLite DB와 첨부파일이 함께 담깁니다. 서버 도입 시 IT 담당자에게 전달해 정식 인증·권한관리·메일 연동을 추가한 후 이관할 수 있어요.</p><div class="warning">⚠ 현재 PC 데이터는 로그인 보호·암호화·접근기록 체계를 갖춘 운영 시스템이 아닙니다. 기밀 도면이나 실제 개인정보를 넣기 전 회사 IT·보안 담당자와 승인 범위를 확인하세요.</div></div>
+      </section>
+      <section id="page-users" class="page" hidden>
+        <div class="page-heading"><div><div class="eyebrow">ACCESS MANAGEMENT</div><h1>사용자 · 권한 관리</h1><p>직원이 처음 로그인하면 일반 계정이 만들어집니다. 필요한 직원만 체크해 권한을 부여하세요.</p></div></div>
+        <div class="notice">ⓘ <b>minjeong.kang</b>은 최초 관리자(권한 고정). 일반 직원은 처음 로그인할 때 자동 등록됩니다. 관리자만 아래의 <b>인허가팀 검토 권한</b> 또는 <b>관리자 지정</b>을 체크하고 저장할 수 있습니다. 관리자 권한은 전체 검토함 및 사용자 관리 권한을 포함합니다.</div>
+        <div class="panel account-form" style="margin-top:16px">
+          <h2>등록된 사용자 · 권한 지정</h2>
+          <div class="field" style="margin-top:12px"><label for="account-search">직원 검색</label><input id="account-search" placeholder="이름 또는 이메일 아이디 검색" autocomplete="off"></div>
+          <p class="hint" id="user-count">처음 로그인한 직원이 여기에 나타납니다.</p>
+          <div id="user-list" class="account-list"></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+<dialog id="image-preview-dialog" class="image-preview-dialog" aria-label="첨부 사진 미리보기">
+  <div class="image-preview-top"><strong id="image-preview-name">첨부 사진</strong><button type="button" class="button small" id="image-preview-close">닫기 ✕</button></div>
+  <img id="image-preview-large" alt="첨부 사진 크게 보기" src="data:,">
+  <p class="hint">사진은 이 화면에서 확인할 수 있습니다. 도면·문서 등은 파일 다운로드를 이용하세요.</p>
+</dialog>
+<dialog id="password-change-dialog" class="password-change-dialog" aria-labelledby="password-change-title">
+  <form id="password-change-form" class="password-change-form">
+    <div class="password-change-heading">
+      <div><h2 id="password-change-title">내 비밀번호 변경</h2><p>관리자 계정의 프로그램 전용 비밀번호를 변경합니다.</p></div>
+      <button type="button" class="button small" id="close-password-change" aria-label="닫기">닫기 ✕</button>
+    </div>
+    <p class="password-change-hint">변경하면 현재 로그인을 포함한 모든 로그인 기록이 종료됩니다. 다시 로그인할 때 새 비밀번호를 입력해 주세요.</p>
+    <div class="field"><label for="current-password">현재 비밀번호 *</label><input id="current-password" type="password" autocomplete="current-password" required maxlength="128"></div>
+    <div class="field"><label for="new-password">새 비밀번호 * (8자 이상)</label><input id="new-password" type="password" autocomplete="new-password" required minlength="8" maxlength="128"></div>
+    <div class="field"><label for="confirm-password">새 비밀번호 다시 입력 *</label><input id="confirm-password" type="password" autocomplete="new-password" required minlength="8" maxlength="128"></div>
+    <p id="password-change-error" role="alert" class="password-change-error" hidden></p>
+    <div class="password-change-actions"><button class="button" type="button" id="cancel-password-change">취소</button><button id="save-password-change" class="button primary" type="submit">비밀번호 변경</button></div>
+  </form>
+</dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
