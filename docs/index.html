@@ -264,7 +264,7 @@ async function getDemoFile(r,index){
    req.onsuccess=()=>resolve(req.result);
    req.onerror=()=>reject(req.error||new Error('File read error'));
   });
-  if(row?.blob)return row.blob;
+  if(row?.blob){return row.blob.name ? row.blob : new File([row.blob],row.name||'attachment',{type:row.blob.type||'application/octet-stream'});}
  }catch(err){console.warn('Demo file unavailable',err)}
  return null;
 }
