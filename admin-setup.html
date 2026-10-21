@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>관리자 최초 설정 - 인허가 검토관리</title><link rel="stylesheet" href="/style.css"><script src="/admin-setup.js" defer></script></head>
+<body><div class="auth-gate"><div class="auth-card">
+<div class="auth-brand"><span class="auth-mark">P</span><div><b>인허가 검토관리</b><p>관리자 전용 초기설정 · 로컬 PC</p></div></div>
+<div class="auth-intro">최초 관리자 계정 설정</div>
+<p class="hint">이 화면은 관리자 초기설정용입니다. 일반 직원의 로그인 화면에는 나타나지 않습니다.</p>
+<form id="setup-form" class="auth-form">
+<label>관리자 이메일 (고정)</label><div class="email-combo"><input id="setup-username" value="minjeong.kang" readonly><span>@hdc-resort.com</span></div>
+<label for="setup-name">관리자 이름</label><input id="setup-name" maxlength="80" required placeholder="관리자 이름">
+<label for="setup-department">부서</label><input id="setup-department" maxlength="120" required value="대외협력팀">
+<label for="setup-password">프로그램 전용 비밀번호 (8자 이상)</label><input id="setup-password" type="password" required minlength="8" maxlength="128" autocomplete="new-password">
+<label for="setup-password-again">비밀번호 확인</label><input id="setup-password-again" type="password" required minlength="8" maxlength="128" autocomplete="new-password">
+<button class="button primary wide" type="submit">관리자 계정 저장</button></form>
+<div class="auth-error" id="setup-error" role="alert"></div>
+<p class="auth-footer"><a href="/">← 일반 직원 로그인 화면으로</a></p>
+</div></div></body></html>
