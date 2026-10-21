@@ -4,8 +4,10 @@
 (() => {
   'use strict';
   const base = String(window.PERMIT_API_BASE || '').trim().replace(/\/+$/, '');
-  const enabled = /^https:\/\/[^/]+/i.test(base) || /^http:\/\/localhost(?::\d+)?$/i.test(base) ||
-                  /^http:\/\/127\.0\.0\.1(?::\d+)?$/i.test(base);
+  const enabled = /^https:\/\/[^/]+/i.test(base) ||
+                  (base === window.location.origin && /^http:\/\//i.test(base));
+  // HTTP is accepted only when the frontend itself is served by that same
+  // office-LAN server. Public GitHub Pages remains in preview mode.
   const TOKEN_KEY = 'hdc-permit-live-token-v1';
   let token = enabled ? (sessionStorage.getItem(TOKEN_KEY) || '') : '';
   let user = null;
