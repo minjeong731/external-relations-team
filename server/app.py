@@ -302,6 +302,7 @@ class Handler(BaseHTTPRequestHandler):
                     token = self.headers.get("Authorization", "")[7:]
                     db.execute("DELETE FROM sessions WHERE token_hash=?",
                                (hashlib.sha256(token.encode()).hexdigest(),))
+                    db.commit()
                     return self.json_response(200, {"ok": True})
                 if path == "/api/users":
                     if who["role"] != "admin":
@@ -316,6 +317,7 @@ class Handler(BaseHTTPRequestHandler):
                                    (email, passhash(password), role, now()))
                     except sqlite3.IntegrityError:
                         raise ValueError("이미 등록된 계정입니다.")
+                    db.commit()
                     return self.json_response(201, {"ok": True, "email": email})
                 if path == "/api/tickets":
                     return self.create_ticket(db, who, body)
@@ -351,6 +353,7 @@ class Handler(BaseHTTPRequestHandler):
         db.execute("DELETE FROM sessions WHERE expires<=?", (int(time.time()),))
         db.execute("INSERT INTO sessions(token_hash,user_id,expires) VALUES(?,?,?)",
                    (hashlib.sha256(token.encode()).hexdigest(), record["id"], int(time.time())+43200))
+        db.commit()
         return self.json_response(200, {"token": token, "user": public_user(record)})
 
     def create_ticket(self, db, who, b):
@@ -371,6 +374,7 @@ class Handler(BaseHTTPRequestHandler):
                     vals["date"],vals["title"],vals["site"],vals["category"],
                     vals["question"],vals["current"],vals["purpose"],now()))
         audit(db, ticket_id, who, "요청접수")
+        db.commit()
         row = db.execute("SELECT * FROM tickets WHERE id=?", (ticket_id,)).fetchone()
         return self.json_response(201, {"ticket": ticket_for(db, row)})
 
@@ -400,6 +404,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:
             path.unlink(missing_ok=True)
             raise
+        db.commit()
         row = db.execute("SELECT * FROM tickets WHERE id=?", (ticket_id,)).fetchone()
         return self.json_response(201, {"ticket": ticket_for(db,row)})
 
@@ -426,6 +431,7 @@ class Handler(BaseHTTPRequestHandler):
         db.execute("UPDATE tickets SET assigned=?,status=? WHERE id=?",
                    (fields["assigned"],"회신완료" if completed else "검토중",ticket_id))
         audit(db,ticket_id,who,"회신확정" if completed else "검토수정")
+        db.commit()
         row = db.execute("SELECT * FROM tickets WHERE id=?", (ticket_id,)).fetchone()
         return self.json_response(200, {"ticket": ticket_for(db,row)})
 
