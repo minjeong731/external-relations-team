@@ -60,6 +60,16 @@
 .attachment-modal-body img{display:block;width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain}
 .attachment-modal-body iframe{width:100%;height:100%;border:0;background:white}
 .attachment-modal-foot{font-size:10.5px;color:#718394;padding:9px 14px}@media(max-width:600px){.attachment-thumb-button{width:100%;height:250px}.attachment-card{gap:10px}.upload-preview-item img{width:86px;height:74px}}
+
+/* V9 web preview: large in-page photo, not a small attachment thumbnail. */
+.attachment-card.has-image{display:flex;flex-direction:column;align-items:stretch;gap:12px;padding:16px}
+.attachment-card.has-image .attachment-main{order:1;width:100%;min-width:0}
+.attachment-card.has-image .attachment-thumb-button{order:2;display:flex;align-items:center;justify-content:center;width:100%;height:min(62vh,580px);min-height:310px;max-height:620px;padding:12px;background:#fff;border:1px solid #d1e1e7;border-radius:12px;cursor:zoom-in}
+.attachment-card.has-image .attachment-thumb{display:block;width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain}
+.attachment-card.has-image .attachment-actions{order:3;justify-content:flex-end;width:100%}
+.attachment-card.has-image .attachment-thumb-button:hover{border-color:#177a86;box-shadow:0 0 0 3px #e2f6f6}
+.attachment-card.has-image .attachment-main:after{content:"아래 사진을 클릭하면 전체 화면으로 확대됩니다";display:block;color:#557385;font-size:11px;margin-top:7px}
+@media(max-width:760px){.attachment-card.has-image .attachment-thumb-button{height:min(53vh,430px);min-height:230px;padding:6px}}
 </style>
 <meta name="robots" content="noindex,nofollow"><style>.preview-note{padding:14px 22px;background:#fff2d8;border-bottom:1px solid #e3d2ab;color:#725420;line-height:1.6;font-size:12px;font-weight:650}.preview-note strong{color:#9a5028}</style></head>
 <body>
@@ -338,7 +348,7 @@ async function renderAttachedFiles(r,root){
  for(let index=0;index<names.length;index++){
   const file=await getDemoFile(r,index);
   if(!root.isConnected)return;
-  const card=document.createElement('div');card.className='attachment-card';
+  const card=document.createElement('div');card.className='attachment-card';if(file&&supportedPicture(file))card.classList.add('has-image');
   if(file&&supportedPicture(file)){
    const previewButton=document.createElement('button');previewButton.type='button';previewButton.className='attachment-thumb-button';previewButton.setAttribute('aria-label',names[index]+' 사진 크게 보기');previewButton.title='사진을 클릭하면 크게 볼 수 있습니다';previewButton.addEventListener('click',()=>openAttachmentModal(file));const img=document.createElement('img');img.className='attachment-thumb';img.src=newAssetUrl(file,detailAssetUrls);img.alt=names[index];previewButton.appendChild(img);card.appendChild(previewButton);
   }else{
@@ -425,7 +435,7 @@ $('history-team-demo').addEventListener('click',()=>{historyMode='team';renderHi
 $('history-back-demo').addEventListener('click',()=>{$('history-detail-demo').hidden=true;$('history-detail').innerHTML='';});
 
 $('filters').addEventListener('click',e=>{let b=e.target.closest('[data-filter]');if(!b)return;filter=b.dataset.filter;teamPage=1;renderTeam()});
-function viewDetail(r,isTeam){let head=`<div class="drawer"><div class="detail-header"><div><span class="id">#${escape(r.id)}</span><div class="detail-h">${escape(r.title)}</div><div class="meta">접수 ${escape(r.date)} · ${escape(r.department)} / ${escape(r.requester)} · ${escape(r.email)}</div></div><span class="status ${escape(r.status)}">${escape(r.status)}</span></div><div class="detail-grid"><div><div class="sum-key">사업장</div><div class="block-val">${fmt(r.site)}</div></div><div><div class="sum-key">검토분야</div><div class="block-val">${fmt(r.category)}</div></div><div class="wide"><div class="sum-key">변경 요청사항</div><div class="block-val">${fmt(r.question)}</div></div><div class="wide"><div class="sum-key">현재 현황</div><div class="block-val">${fmt(r.current)}</div></div><div class="wide"><div class="sum-key">변경 필요성</div><div class="block-val">${fmt(r.purpose)}</div></div><div class="wide"><div class="sum-key">첨부 파일 (사진·PDF 미리보기 / 도면 등 다운로드)</div><div class="block-val attachment-gallery">첨부파일 불러오는 중…</div></div></div><div class="divider"></div>`;
+function viewDetail(r,isTeam){let head=`<div class="drawer"><div class="detail-header"><div><span class="id">#${escape(r.id)}</span><div class="detail-h">${escape(r.title)}</div><div class="meta">접수 ${escape(r.date)} · ${escape(r.department)} / ${escape(r.requester)} · ${escape(r.email)}</div></div><span class="status ${escape(r.status)}">${escape(r.status)}</span></div><div class="detail-grid"><div><div class="sum-key">사업장</div><div class="block-val">${fmt(r.site)}</div></div><div><div class="sum-key">검토분야</div><div class="block-val">${fmt(r.category)}</div></div><div class="wide"><div class="sum-key">변경 요청사항</div><div class="block-val">${fmt(r.question)}</div></div><div class="wide"><div class="sum-key">현재 현황</div><div class="block-val">${fmt(r.current)}</div></div><div class="wide"><div class="sum-key">변경 필요성</div><div class="block-val">${fmt(r.purpose)}</div></div><div class="wide"><div class="sum-key">첨부 파일 · 사진 크게 보기 / PDF 미리보기 / 도면 다운로드</div><div class="block-val attachment-gallery">첨부파일 불러오는 중…</div></div></div><div class="divider"></div>`;
 if(!isTeam){head+=r.review?`<div class="review-form"><h3>회신 결과</h3><div class="sum-key">회신 담당자 / 회신일</div><div class="block-val">${escape(r.assigned)} / ${escape(r.review.sentAt||'발송 전')}</div><div class="sum-key" style="margin-top:12px">검토 의견</div><div class="block-val">${fmt(r.review.result)}</div><div class="sum-key" style="margin-top:12px">적용 법령 및 근거</div><div class="block-val">${fmt(r.review.law)}</div><div class="sum-key" style="margin-top:12px">필요 조치·소요기간</div><div class="block-val">${fmt(r.review.action)} / ${fmt(r.review.period)}</div></div>`:'<div class="review-form"><h3>진행 현황</h3><div class="right-review-note">아직 최종 회신이 등록되지 않았습니다. 검토 담당자가 처리 중입니다.</div></div>';return head+'</div>'}
 let rev=r.review||{};head+=`<div class="review-form"><h3>담당자 지정 및 검토 회신</h3><div class="right-review-note">시안에서는 회신 완료를 눌러도 메일이 발송되지 않습니다. 실제 운영에서는 인증된 담당자만 발송하며 처리이력이 저장됩니다.</div>
 <div class="row2"><div class="field"><label for="assignee">검토 담당자 <span class="req">*</span></label><select class="input" id="assignee" ${r.status==='회신완료'?'disabled':''}><option value="">담당자 선택</option>${['인허가팀 담당자 A','인허가팀 담당자 B','인허가팀 담당자 C'].map(n=>`<option value="${escape(n)}" ${r.assigned===n?'selected':''}>${escape(n)}</option>`).join('')}</select></div><div class="field"><label>진행 상태</label><div class="block-val">${escape(r.status)}</div></div></div>
