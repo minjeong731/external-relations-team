@@ -35,6 +35,31 @@
 .email-fixed input::placeholder{color:#a8b4be}
 .email-domain{display:flex;align-items:center;padding:0 11px;background:#eff5f7;border-left:1px solid #d9e2eb;white-space:nowrap;color:#426277;font-size:12px;font-weight:750}
 @media(max-width:400px){.email-domain{padding:0 6px;font-size:10.5px}}
+
+/* Browser-local attachment preview for the static demo */
+.attachment-gallery{display:flex;flex-direction:column;gap:9px}
+.attachment-card{display:flex;gap:12px;align-items:center;padding:11px;background:#f5f9fc;border:1px solid #e0eaf0;border-radius:9px;min-width:0;flex-wrap:wrap}
+.attachment-thumb{width:85px;height:75px;border-radius:7px;object-fit:contain;border:1px solid #dde7ed;background:#fff;flex:none}
+.attachment-type-icon{width:48px;height:55px;border-radius:7px;background:#ebeff6;color:#52738a;display:grid;place-items:center;font-weight:800;flex:none;font-size:12px}
+.attachment-main{flex:1;min-width:140px}
+.attachment-name{font-weight:750;color:#2e4a61;overflow-wrap:anywhere;font-size:12px}
+.attachment-meta{font-size:11px;color:#7b8997;margin-top:3px}
+.attachment-actions{display:flex;gap:6px;flex-wrap:wrap}
+.attachment-actions .btn{padding:7px 11px;font-size:11px}
+.attachment-missing{color:#9c6030;font-size:11px;margin-top:6px}
+.attachment-note{font-size:11px;color:#778b9c;background:#f3f8fa;border-radius:7px;padding:9px 11px;margin-top:5px}
+.upload-preview-list{display:flex;flex-direction:column;gap:5px;margin-top:9px;text-align:left}
+.upload-preview-item{display:flex;gap:9px;align-items:center;padding:6px;border-radius:7px;background:#fff;font-size:11px;overflow-wrap:anywhere}
+.upload-preview-item img{width:44px;height:44px;object-fit:contain;border-radius:5px}
+.attachment-modal{position:fixed;inset:0;z-index:2500;background:rgba(14,32,49,.78);display:flex;align-items:center;justify-content:center;padding:20px}
+.attachment-modal[hidden]{display:none!important}
+.attachment-dialog{background:#fff;width:min(1100px,100%);height:min(900px,94vh);border-radius:13px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 22px 70px #0005}
+.attachment-header{padding:12px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid #dfebef}
+.attachment-header strong{font-size:13px;overflow-wrap:anywhere}
+.attachment-modal-body{flex:1;min-height:0;background:#f4f7f9;display:grid;place-items:center;overflow:auto}
+.attachment-modal-body img{max-width:100%;max-height:100%;object-fit:contain}
+.attachment-modal-body iframe{width:100%;height:100%;border:0;background:white}
+.attachment-modal-foot{font-size:10.5px;color:#718394;padding:9px 14px}
 </style>
 <meta name="robots" content="noindex,nofollow"><style>.preview-note{padding:14px 22px;background:#fff2d8;border-bottom:1px solid #e3d2ab;color:#725420;line-height:1.6;font-size:12px;font-weight:650}.preview-note strong{color:#9a5028}</style></head>
 <body>
@@ -87,7 +112,7 @@
     <div class="field"><label for="purpose">변경 필요성 <span class="req">*</span></label><textarea class="input" id="purpose" required placeholder="현장 여건, 변경 사유, 예상 공사 일정 등" maxlength="3000"></textarea></div>
    </div>
    <div class="section" style="margin-bottom:0"><div class="section-heading"><span class="num">03</span>관련 자료</div>
-    <div class="upload"><label for="file-input">＋&nbsp; 도면·사진 파일 선택</label><input type="file" id="file-input" multiple accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls,.docx,.hwp,.hwpx" style="position:absolute;width:1px;height:1px;opacity:0"/><p>PDF, JPG, PNG, Excel, Word, HWP · 시안에서는 파일명만 표시합니다.</p><ul class="file-list" id="file-list"></ul></div>
+    <div class="upload"><label for="file-input">＋&nbsp; 도면·사진 파일 선택</label><input type="file" id="file-input" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.dwg,.xlsx,.xls,.docx,.hwp,.hwpx" style="position:absolute;width:1px;height:1px;opacity:0"/><p>사진(PNG·JPG·WEBP·GIF)과 PDF는 바로 미리보기, HWP·DWG·Excel 등은 다운로드로 확인합니다.<br>시연 파일은 이 브라우저에만 저장되며 다른 직원과 공유되지 않습니다.</p><ul class="file-list" id="file-list"></ul></div>
    </div>
   </div>
   <div class="action-row"><button type="button" class="btn ghost" id="sample-btn">예시 내용 자동 입력</button><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="reset" class="btn">초기화</button><button type="submit" class="btn primary">검토 요청 제출 →</button></div></div>
@@ -145,6 +170,13 @@
 </div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div id="attachment-preview-modal" class="attachment-modal" hidden role="dialog" aria-modal="true" aria-labelledby="attachment-modal-title">
+  <div class="attachment-dialog">
+    <div class="attachment-header"><strong id="attachment-modal-title">첨부파일 미리보기</strong><button type="button" class="btn" id="attachment-modal-close" aria-label="미리보기 닫기">닫기 ✕</button></div>
+    <div id="attachment-modal-body" class="attachment-modal-body"></div>
+    <div class="attachment-modal-foot">브라우저에서 지원되는 사진 및 PDF만 미리보기 할 수 있습니다. 시연 파일은 서버로 전송되지 않습니다.</div>
+  </div>
+</div>
 <script>
 (()=>{'use strict';
 let demoRole = null;
@@ -181,11 +213,171 @@ function store(){try{sessionStorage.setItem(STORAGE,JSON.stringify(requests))}ca
 function updateCounts(){$('mine-count').textContent=requests.length;$('team-count').textContent=requests.filter(r=>r.status!=='회신완료').length}
 function setScreen(v){if(demoRole==='requester'&&['team','archive','history'].includes(v))return;if(demoRole==='reviewer'&&!['team','archive','history'].includes(v))return;active=v;['new','mine','team','archive','history'].forEach(x=>{$('screen-'+x).hidden=x!==v;document.querySelectorAll('[data-screen="'+x+'"]').forEach(b=>b.classList.toggle('active',x===v))});$('bread-current').textContent=({new:'인허가 검토 요청',mine:'내 요청 현황',team:'인허가팀 검토함',archive:'전체 문의 · 답변 이력',history:'변경이력'})[v];if(v==='mine')renderMine();if(v==='team')renderTeam();if(v==='archive')renderArchiveDemo();if(v==='history')renderHistoryDemo();window.scrollTo({top:0,behavior:'instant'})}
 document.querySelectorAll('[data-screen]').forEach(b=>b.addEventListener('click',()=>setScreen(b.dataset.screen)));
+
+const demoAttachmentMemory = new Map();
+let demoAttachmentDBPromise = null;
+let detailAssetUrls = [];
+let chosenAssetUrls = [];
+let chosenFileSignature = '';
+const supportedPicture = file => /\.(png|jpe?g|webp|gif)$/i.test(file.name || '') && (!file.type || /^image\/(png|jpeg|webp|gif)$/.test(file.type));
+const supportedPdf = file => /\.pdf$/i.test(file.name || '') && (!file.type || file.type === 'application/pdf');
+const fileSizeLabel = bytes => bytes < 1024 ? bytes+' B' : bytes < 1048576 ? (bytes/1024).toFixed(1)+' KB' : (bytes/1048576).toFixed(1)+' MB';
+function revokeUrls(urls){for(const url of urls)URL.revokeObjectURL(url);urls.length=0}
+function newAssetUrl(file,urls){const url=URL.createObjectURL(file);urls.push(url);return url}
+function attachmentDatabase(){
+ if(!('indexedDB' in window))return Promise.reject(new Error('IndexedDB unavailable'));
+ if(!demoAttachmentDBPromise){
+  demoAttachmentDBPromise=new Promise((resolve,reject)=>{
+   const req=indexedDB.open('hdc-permit-demo-attachments',1);
+   req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains('files'))req.result.createObjectStore('files',{keyPath:'key'})};
+   req.onsuccess=()=>resolve(req.result);
+   req.onerror=()=>reject(req.error||new Error('File storage error'));
+   req.onblocked=()=>reject(new Error('File database blocked'));
+  });
+ }
+ return demoAttachmentDBPromise;
+}
+const attachmentStorageKey=(r,index)=>String(r.attachmentId||r.id)+'::'+index;
+async function storeDemoFile(r,index,file){
+ const key=attachmentStorageKey(r,index);
+ demoAttachmentMemory.set(key,file);
+ try{
+  const db=await attachmentDatabase();
+  await new Promise((resolve,reject)=>{
+   const tx=db.transaction('files','readwrite');
+   tx.objectStore('files').put({key,name:file.name,blob:file});
+   tx.oncomplete=resolve;
+   tx.onerror=()=>reject(tx.error||new Error('File write error'));
+   tx.onabort=()=>reject(tx.error||new Error('File write cancelled'));
+  });
+  return true;
+ }catch(err){console.warn('Demo file saved for this open tab only',err);return false}
+}
+async function getDemoFile(r,index){
+ const key=attachmentStorageKey(r,index);
+ if(demoAttachmentMemory.has(key))return demoAttachmentMemory.get(key);
+ try{
+  const db=await attachmentDatabase();
+  const row=await new Promise((resolve,reject)=>{
+   const tx=db.transaction('files','readonly');
+   const req=tx.objectStore('files').get(key);
+   req.onsuccess=()=>resolve(req.result);
+   req.onerror=()=>reject(req.error||new Error('File read error'));
+  });
+  if(row?.blob)return row.blob;
+ }catch(err){console.warn('Demo file unavailable',err)}
+ return null;
+}
+async function clearStoredDemoFiles(){
+ demoAttachmentMemory.clear();
+ try{
+  const db=await attachmentDatabase();
+  await new Promise((resolve,reject)=>{
+   const tx=db.transaction('files','readwrite');
+   tx.objectStore('files').clear();
+   tx.oncomplete=resolve;
+   tx.onerror=()=>reject(tx.error||new Error('File cleanup error'));
+  });
+ }catch(err){console.warn('Could not clear IndexedDB files',err)}
+}
+function closeAttachmentModal(){
+ $('attachment-preview-modal').hidden=true;
+ $('attachment-modal-body').replaceChildren();
+}
+function openAttachmentModal(file){
+ if(!supportedPicture(file)&&!supportedPdf(file))return;
+ const modal=$('attachment-preview-modal'),body=$('attachment-modal-body');
+ $('attachment-modal-title').textContent=file.name||'첨부파일 미리보기';
+ body.replaceChildren();
+ const blobType=supportedPdf(file)?'application/pdf':(file.type||({'png':'image/png','jpg':'image/jpeg','jpeg':'image/jpeg','webp':'image/webp','gif':'image/gif'}[(file.name||'').split('.').pop().toLowerCase()]||'application/octet-stream'));
+ const blob=file.type?file:new Blob([file],{type:blobType});
+ const url=URL.createObjectURL(blob);
+ const media=document.createElement(supportedPdf(file)?'iframe':'img');
+ media.src=url;
+ media.title='첨부파일 미리보기';
+ if(supportedPicture(file))media.alt=file.name;
+ body.appendChild(media);
+ modal.hidden=false;
+ const onClose=()=>{URL.revokeObjectURL(url);$('attachment-modal-close').removeEventListener('click',onClose);};
+ $('attachment-modal-close').addEventListener('click',onClose,{once:true});
+ modal._cleanup=onClose;
+}
+$('attachment-modal-close').onclick=()=>{if($('attachment-preview-modal')._cleanup){$('attachment-preview-modal')._cleanup();$('attachment-preview-modal')._cleanup=null;}closeAttachmentModal()};
+$('attachment-preview-modal').addEventListener('click',e=>{if(e.target===$('attachment-preview-modal'))$('attachment-modal-close').click()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('attachment-preview-modal').hidden)$('attachment-modal-close').click()});
+function addFileButton(container,label,handler,primary){
+ const button=document.createElement('button');button.type='button';button.className='btn'+(primary?' soft':'');button.textContent=label;button.addEventListener('click',handler);container.appendChild(button);return button;
+}
+function addDownloadButton(container,file){
+ addFileButton(container,'다운로드',()=>{
+  const url=URL.createObjectURL(file),a=document.createElement('a');a.href=url;a.download=file.name;a.style.display='none';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
+ });
+}
+function renderChosenFiles(){
+ const files=Array.from($('file-input').files||[]);
+ const signature=files.map(f=>[f.name,f.size,f.lastModified].join('|')).join(';');
+ if(signature===chosenFileSignature)return;
+ chosenFileSignature=signature;revokeUrls(chosenAssetUrls);
+ const root=$('file-list');root.replaceChildren();
+ for(const f of files){
+  const li=document.createElement('li');li.className='upload-preview-item';
+  if(supportedPicture(f)){
+   const img=document.createElement('img');img.src=newAssetUrl(f,chosenAssetUrls);img.alt=f.name;li.appendChild(img);
+  }
+  const name=document.createElement('span');name.style.flex='1';name.textContent=f.name;li.appendChild(name);
+  if(supportedPicture(f)||supportedPdf(f))addFileButton(li,'미리보기',()=>openAttachmentModal(f),true);
+  root.appendChild(li);
+ }
+}
+async function renderAttachedFiles(r,root){
+ if(!root)return;
+ revokeUrls(detailAssetUrls);
+ root.replaceChildren();
+ const names=Array.isArray(r.fileNames)?r.fileNames:[];
+ if(!names.length){root.textContent='없음';return}
+ for(let index=0;index<names.length;index++){
+  const file=await getDemoFile(r,index);
+  if(!root.isConnected)return;
+  const card=document.createElement('div');card.className='attachment-card';
+  if(file&&supportedPicture(file)){
+   const img=document.createElement('img');img.className='attachment-thumb';img.src=newAssetUrl(file,detailAssetUrls);img.alt=names[index];card.appendChild(img);
+  }else{
+   const icon=document.createElement('div');icon.className='attachment-type-icon';icon.textContent=file&&supportedPdf(file)?'PDF':'FILE';card.appendChild(icon);
+  }
+  const main=document.createElement('div');main.className='attachment-main';
+  const name=document.createElement('div');name.className='attachment-name';name.textContent=names[index];main.appendChild(name);
+  const meta=document.createElement('div');meta.className='attachment-meta';
+  meta.textContent=file?(supportedPicture(file)?'사진 미리보기 가능':supportedPdf(file)?'PDF 미리보기 가능':'미리보기 미지원 · 다운로드 가능')+' · '+fileSizeLabel(file.size):'이전 시연 접수 · 파일명만 저장됨';
+  main.appendChild(meta);card.appendChild(main);
+  const actions=document.createElement('div');actions.className='attachment-actions';
+  if(file){
+   if(supportedPicture(file)||supportedPdf(file))addFileButton(actions,'미리보기',()=>openAttachmentModal(file),true);
+   addDownloadButton(actions,file);
+  }else{
+   const input=document.createElement('input');input.type='file';input.accept='.pdf,.png,.jpg,.jpeg,.webp,.gif,.dwg,.xlsx,.xls,.docx,.hwp,.hwpx';input.hidden=true;
+   input.addEventListener('change',async()=>{
+    const selected=input.files&&input.files[0];if(!selected)return;
+    const persisted=await storeDemoFile(r,index,selected);
+    r.fileNames[index]=selected.name;
+    store();
+    await renderAttachedFiles(r,root);
+    notice(persisted?'기존 시연 건에 첨부파일을 다시 연결했습니다.':'파일을 현재 탭에서만 열 수 있습니다. 브라우저 저장이 제한됐습니다.');
+   });
+   actions.appendChild(input);
+   addFileButton(actions,'파일 다시 연결',()=>input.click(),true);
+  }
+  card.appendChild(actions);root.appendChild(card);
+ }
+ const note=document.createElement('div');note.className='attachment-note';
+ note.textContent='웹 화면 시연: 파일은 이 브라우저에만 저장됩니다. 다른 직원 PC와 공유되지 않으며 실제 서버에 업로드되지 않습니다.';
+ root.appendChild(note);
+}
+
 function getForm(){return {department:$('department').value.trim(),requester:$('requester').value.trim(),email:fullCompanyEmail(),date:$('request-date').value,title:$('title').value.trim(),site:$('site').value.trim(),category:$('category').value,question:$('question').value.trim(),current:$('current').value.trim(),purpose:$('purpose').value.trim(),fileNames:Array.from($('file-input').files||[]).map(f=>f.name)}}
-function updatePreview(){let f=getForm();$('prev-title').textContent=f.title||'요청 제목을 입력해 주세요';$('prev-date').textContent=f.date?'요청일자 · '+f.date:'요청일자를 선택해 주세요';$('prev-person').textContent=[f.department,f.requester].filter(Boolean).join(' / ')||'미입력';$('prev-meta').textContent=[f.site,f.category].filter(Boolean).join(' / ')||'미입력';$('prev-question').textContent=f.question||'내용을 입력하면 여기에 표시됩니다.';$('prev-question').classList.toggle('muted-val',!f.question);$('prev-file').textContent=f.fileNames.length?f.fileNames.join(', '):'선택된 파일 없음';$('file-list').innerHTML=f.fileNames.map(x=>'<li>📎 '+escape(x)+'</li>').join('')}
+function updatePreview(){let f=getForm();$('prev-title').textContent=f.title||'요청 제목을 입력해 주세요';$('prev-date').textContent=f.date?'요청일자 · '+f.date:'요청일자를 선택해 주세요';$('prev-person').textContent=[f.department,f.requester].filter(Boolean).join(' / ')||'미입력';$('prev-meta').textContent=[f.site,f.category].filter(Boolean).join(' / ')||'미입력';$('prev-question').textContent=f.question||'내용을 입력하면 여기에 표시됩니다.';$('prev-question').classList.toggle('muted-val',!f.question);$('prev-file').textContent=f.fileNames.length?f.fileNames.join(', '):'선택된 파일 없음';renderChosenFiles()}
 $('request-form').addEventListener('input',updatePreview);$('request-form').addEventListener('change',updatePreview);$('request-form').addEventListener('reset',()=>{setTimeout(()=>{$('request-date').value=nowDate();updatePreview()},0)});
 $('sample-btn').addEventListener('click',()=>{let map={department:'시설센터',requester:'홍길동',email:'requester',title:'골프장 하우스 건축물 위치 변경 검토',site:'OO CC 하우스 예정지',category:'건축·설계변경',question:'하우스 시공 시 건축물의 위치를 어느 범위까지 조정할 수 있는지 검토 요청드립니다.',current:'현장 시공 계획 검토 중 위치 조정 필요성이 제기되었습니다.',purpose:'현장 확인 후 건축 위치를 조정하고 관련 인허가 변경 절차를 파악하기 위함입니다.'};Object.entries(map).forEach(([k,v])=>$(k).value=v);$('request-date').value=nowDate();updatePreview();notice('예시 내용이 채워졌습니다. 실제 업무 자료가 아닌 샘플입니다.')});
-$('request-form').addEventListener('submit',e=>{e.preventDefault();const f=getForm();for(const key of ['department','requester','email','date','title','question','current','purpose']){let el=$(key==='date'?'request-date':key);if(!el.value.trim()){el.focus();notice('필수 입력 항목을 확인해 주세요.');return}}if(!validLocalEmail()||!$('email').checkValidity()){$('email').focus();notice('회사 이메일의 @ 앞부분만 입력해 주세요. (영문·숫자 및 . _ % + - 사용 가능)');return}const seq=String(requests.length?Math.max(...requests.map(r=>Number((r.id||'').split('-').pop())||0))+1:1).padStart(3,'0');const id=new Date().getFullYear()+'-'+seq;const r={...f,id,status:'접수',assigned:'',review:null,created:new Date().toISOString()};requests.unshift(r);store();$('request-form').reset();$('request-date').value=nowDate();updatePreview();setScreen('mine');notice('['+id+'] 시연용 접수가 완료됐습니다. 실제 메일은 발송되지 않았습니다.')});
+$('request-form').addEventListener('submit',async e=>{e.preventDefault();const f=getForm();for(const key of ['department','requester','email','date','title','question','current','purpose']){let el=$(key==='date'?'request-date':key);if(!el.value.trim()){el.focus();notice('필수 입력 항목을 확인해 주세요.');return}}if(!validLocalEmail()||!$('email').checkValidity()){$('email').focus();notice('회사 이메일의 @ 앞부분만 입력해 주세요. (영문·숫자 및 . _ % + - 사용 가능)');return}const seq=String(requests.length?Math.max(...requests.map(r=>Number((r.id||'').split('-').pop())||0))+1:1).padStart(3,'0');const id=new Date().getFullYear()+'-'+seq;const r={...f,id,attachmentId:(self.crypto&&crypto.randomUUID?crypto.randomUUID():String(Date.now())+'-'+Math.random().toString(16).slice(2)),status:'접수',assigned:'',review:null,created:new Date().toISOString()};const selectedFiles=Array.from($('file-input').files||[]);const submitButton=$('request-form').querySelector('button[type="submit"]');submitButton.disabled=true;let storedAll=true;for(let index=0;index<selectedFiles.length;index++){if(!await storeDemoFile(r,index,selectedFiles[index]))storedAll=false;}requests.unshift(r);store();submitButton.disabled=false;$('request-form').reset();$('request-date').value=nowDate();updatePreview();setScreen('mine');notice('['+id+'] 시연 접수 완료. '+(storedAll?'첨부파일도 이 브라우저에 저장됐습니다.':'파일 저장이 제한되어 현재 탭에서만 첨부파일을 볼 수 있습니다.')+' 실제 메일은 발송되지 않습니다.')});
 function listCard(r,isTeam){return `<div class="item-card"><div style="min-width:0"><span class="id">#${escape(r.id)}</span><h3>${escape(r.title)}</h3><div class="meta">${escape(r.department)} · ${escape(r.requester)} · ${escape(r.date)} · 담당 ${escape(r.assigned||'미지정')}</div></div><div style="display:flex;gap:10px;align-items:center"><span class="status ${escape(r.status)}">${escape(r.status)}</span><button class="btn soft" data-open="${escape(r.id)}" data-view="${isTeam?'team':'mine'}">열기 →</button></div></div>`}
 function renderMine(){let root=$('mine-list');root.innerHTML=requests.length?requests.map(r=>listCard(r,false)).join(''):'<div class="empty">아직 접수된 요청이 없습니다.<br/>새 검토 요청에서 예시 내용을 입력해 보세요.</div>';$('mine-detail').innerHTML='';}
 let teamPage=1;let archivePage=1;let historyMode='category';
@@ -233,7 +425,7 @@ $('history-team-demo').addEventListener('click',()=>{historyMode='team';renderHi
 $('history-back-demo').addEventListener('click',()=>{$('history-detail-demo').hidden=true;$('history-detail').innerHTML='';});
 
 $('filters').addEventListener('click',e=>{let b=e.target.closest('[data-filter]');if(!b)return;filter=b.dataset.filter;teamPage=1;renderTeam()});
-function viewDetail(r,isTeam){let head=`<div class="drawer"><div class="detail-header"><div><span class="id">#${escape(r.id)}</span><div class="detail-h">${escape(r.title)}</div><div class="meta">접수 ${escape(r.date)} · ${escape(r.department)} / ${escape(r.requester)} · ${escape(r.email)}</div></div><span class="status ${escape(r.status)}">${escape(r.status)}</span></div><div class="detail-grid"><div><div class="sum-key">사업장</div><div class="block-val">${fmt(r.site)}</div></div><div><div class="sum-key">검토분야</div><div class="block-val">${fmt(r.category)}</div></div><div class="wide"><div class="sum-key">변경 요청사항</div><div class="block-val">${fmt(r.question)}</div></div><div class="wide"><div class="sum-key">현재 현황</div><div class="block-val">${fmt(r.current)}</div></div><div class="wide"><div class="sum-key">변경 필요성</div><div class="block-val">${fmt(r.purpose)}</div></div><div class="wide"><div class="sum-key">첨부 파일 (시안에서는 파일명만 기록)</div><div class="block-val">${r.fileNames.length?r.fileNames.map(escape).join(' · '):'없음'}</div></div></div><div class="divider"></div>`;
+function viewDetail(r,isTeam){let head=`<div class="drawer"><div class="detail-header"><div><span class="id">#${escape(r.id)}</span><div class="detail-h">${escape(r.title)}</div><div class="meta">접수 ${escape(r.date)} · ${escape(r.department)} / ${escape(r.requester)} · ${escape(r.email)}</div></div><span class="status ${escape(r.status)}">${escape(r.status)}</span></div><div class="detail-grid"><div><div class="sum-key">사업장</div><div class="block-val">${fmt(r.site)}</div></div><div><div class="sum-key">검토분야</div><div class="block-val">${fmt(r.category)}</div></div><div class="wide"><div class="sum-key">변경 요청사항</div><div class="block-val">${fmt(r.question)}</div></div><div class="wide"><div class="sum-key">현재 현황</div><div class="block-val">${fmt(r.current)}</div></div><div class="wide"><div class="sum-key">변경 필요성</div><div class="block-val">${fmt(r.purpose)}</div></div><div class="wide"><div class="sum-key">첨부 파일 (사진·PDF 미리보기 / 도면 등 다운로드)</div><div class="block-val attachment-gallery">첨부파일 불러오는 중…</div></div></div><div class="divider"></div>`;
 if(!isTeam){head+=r.review?`<div class="review-form"><h3>회신 결과</h3><div class="sum-key">회신 담당자 / 회신일</div><div class="block-val">${escape(r.assigned)} / ${escape(r.review.sentAt||'발송 전')}</div><div class="sum-key" style="margin-top:12px">검토 의견</div><div class="block-val">${fmt(r.review.result)}</div><div class="sum-key" style="margin-top:12px">적용 법령 및 근거</div><div class="block-val">${fmt(r.review.law)}</div><div class="sum-key" style="margin-top:12px">필요 조치·소요기간</div><div class="block-val">${fmt(r.review.action)} / ${fmt(r.review.period)}</div></div>`:'<div class="review-form"><h3>진행 현황</h3><div class="right-review-note">아직 최종 회신이 등록되지 않았습니다. 검토 담당자가 처리 중입니다.</div></div>';return head+'</div>'}
 let rev=r.review||{};head+=`<div class="review-form"><h3>담당자 지정 및 검토 회신</h3><div class="right-review-note">시안에서는 회신 완료를 눌러도 메일이 발송되지 않습니다. 실제 운영에서는 인증된 담당자만 발송하며 처리이력이 저장됩니다.</div>
 <div class="row2"><div class="field"><label for="assignee">검토 담당자 <span class="req">*</span></label><select class="input" id="assignee" ${r.status==='회신완료'?'disabled':''}><option value="">담당자 선택</option>${['인허가팀 담당자 A','인허가팀 담당자 B','인허가팀 담당자 C'].map(n=>`<option value="${escape(n)}" ${r.assigned===n?'selected':''}>${escape(n)}</option>`).join('')}</select></div><div class="field"><label>진행 상태</label><div class="block-val">${escape(r.status)}</div></div></div>
@@ -243,12 +435,12 @@ let rev=r.review||{};head+=`<div class="review-form"><h3>담당자 지정 및 �
 <div class="field"><label for="review-period">예상 소요기간</label><input class="input" id="review-period" ${r.status==='회신완료'?'disabled':''} placeholder="예: 관련 기관 협의 후 별도 안내" value="${escape(rev.period||'')}" /></div>
 <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">${r.status!=='회신완료'?`<button class="btn soft" id="save-review">검토내용 임시저장</button><button class="btn primary" id="send-review">회신 완료 처리 (데모)</button>`:'<span class="pill">시연 회신 처리 완료</span>'}</div>
 <div class="note-inline">※ 실제 운영 시 메일은 서버에서 발송하고 SMTP 접수 결과 및 실패 이력을 관리합니다.</div><div id="mail-preview-area"></div></div></div>`;return head}
-function display(id,side){let r=requests.find(x=>x.id===id);if(!r)return;$(side+'-detail').innerHTML=viewDetail(r,side==='team');$(side+'-detail').scrollIntoView({behavior:'smooth',block:'start'});if(side==='team'){let out=$('mail-preview-area');if(r.review&&r.review.sentAt)mailPreview(r,out);if(r.status!=='회신완료'){$('save-review').onclick=()=>saveReview(r,false);$('send-review').onclick=()=>saveReview(r,true)}}}
+function display(id,side){let r=requests.find(x=>x.id===id);if(!r)return;$(side+'-detail').innerHTML=viewDetail(r,side==='team');renderAttachedFiles(r,$(side+'-detail').querySelector('.attachment-gallery'));$(side+'-detail').scrollIntoView({behavior:'smooth',block:'start'});if(side==='team'){let out=$('mail-preview-area');if(r.review&&r.review.sentAt)mailPreview(r,out);if(r.status!=='회신완료'){$('save-review').onclick=()=>saveReview(r,false);$('send-review').onclick=()=>saveReview(r,true)}}}
 document.addEventListener('click',e=>{let b=e.target.closest('[data-open]');if(b)display(b.dataset.open,b.dataset.view)});
 function collectReview(r){return {result:$('review-result').value.trim(),law:$('review-law').value.trim(),action:$('review-action').value.trim(),period:$('review-period').value.trim(),sentAt:r.review?.sentAt||null}}
 function saveReview(r,send){let a=$('assignee').value;if(!a){$('assignee').focus();notice('검토 담당자를 선택하세요.');return}let rev=collectReview(r);if(send&&!rev.result){$('review-result').focus();notice('검토 결과를 입력해야 회신을 처리할 수 있습니다.');return}if(send&&!confirm('회신 완료(시연)로 표시할까요?\n※ 실제 이메일은 발송되지 않습니다.'))return;r.assigned=a;r.review=rev;r.status=send?'회신완료':'검토중';if(send)r.review.sentAt=new Date().toLocaleString('ko-KR');store();renderTeam();display(r.id,'team');notice(send?'회신 완료로 표시했습니다. 실제 메일은 발송되지 않았습니다.':'검토내용을 시연용으로 임시 저장했습니다.')}
 function mailPreview(r,out){let v=r.review;out.innerHTML='<div class="mail-preview"><strong>✉ 발송 메일 미리보기 (실제 발송 없음)</strong>\n\n받는 사람: '+escape(r.email)+'\n제목: [인허가 검토 결과]['+escape(r.id)+'] '+escape(r.title)+'\n\n'+escape(r.requester)+' 님, 요청하신 인허가 검토 결과를 안내드립니다.\n\n접수번호: '+escape(r.id)+'\n검토 담당자: '+escape(r.assigned)+'\n\n1. 검토 결과\n'+escape(v.result)+'\n\n2. 관계 법령 및 검토 근거\n'+escape(v.law||'별도 기재 없음')+'\n\n3. 필요한 후속 조치\n'+escape(v.action||'별도 기재 없음')+'\n\n4. 예상 소요기간\n'+escape(v.period||'별도 기재 없음')+'\n\n감사합니다.\n인허가팀</div>'}
-$('clear-demo').onclick=()=>{if(!confirm('이 브라우저 탭에 저장된 모든 시연 접수 건을 삭제할까요?'))return;requests=[];store();renderTeam();notice('시연 데이터를 삭제했습니다.')};updateCounts();updatePreview();setScreen('new');
+$('clear-demo').onclick=async()=>{if(!confirm('이 브라우저 탭의 시연 접수 목록과 이 브라우저에 저장된 모든 시연 첨부파일을 삭제할까요?'))return;requests=[];await clearStoredDemoFiles();store();renderTeam();notice('시연 접수 목록과 시연 첨부파일을 삭제했습니다.')};updateCounts();updatePreview();setScreen('new');
 })();
 </script>
 </body></html>
