@@ -28,7 +28,7 @@
 .demo-login-hint{background:#fff6e5;border:1px solid #edd9ad;border-radius:9px;padding:12px 13px;margin-top:20px;color:#7c5b22;font-size:11.5px;line-height:1.65}
 #demo-logout{padding:6px 10px;font-size:11px}
 
-</style>
+\n.demo-pager{padding:15px 22px}.demo-paging{display:flex;align-items:center;justify-content:center;gap:17px;color:#6b8090;font-size:12px}.demo-paging .btn{padding:7px 11px}.demo-controls{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.demo-controls label{font-size:12px;font-weight:800}.demo-controls select{max-width:180px}.demo-controls input{flex:1;min-width:180px}.demo-controls .tabs{margin:0}.demo-summary{background:#f3f8fb;padding:13px;margin-top:13px;border-radius:9px;font-weight:700;color:#33566b;font-size:12px}\n</style>
 <meta name="robots" content="noindex,nofollow"><style>.preview-note{padding:14px 22px;background:#fff2d8;border-bottom:1px solid #e3d2ab;color:#725420;line-height:1.6;font-size:12px;font-weight:650}.preview-note strong{color:#9a5028}</style></head>
 <body>
 <div id="demo-login-gate" role="dialog" aria-modal="true" aria-labelledby="demo-login-title">
@@ -50,13 +50,15 @@
  <button class="nav-btn active" data-screen="new"><span class="nav-icon">▤</span>새 검토 요청</button>
  <button class="nav-btn" data-screen="mine"><span class="nav-icon">◫</span>내 요청 현황 <span class="nav-count" id="mine-count">0</span></button>
  <button class="nav-btn" data-screen="team"><span class="nav-icon">▦</span>인허가팀 검토함 <span class="nav-count" id="team-count">0</span></button>
+ <button class="nav-btn" data-screen="archive"><span class="nav-icon">▤</span>전체 문의 · 답변 이력</button>
+ <button class="nav-btn" data-screen="history"><span class="nav-icon">▧</span>변경이력</button>
  <div class="nav-label">운영 안내</div>
  <div style="padding:0 13px;color:#adbfcc;font-size:11.5px;line-height:1.95">접수 → 담당자 지정 → 검토 → 회신<br/>메일 발송은 서버 연결 후 활성화</div>
  <div class="sidebar-foot"><span class="demo-chip">INTERACTIVE DEMO</span><strong>화면 시안 · 실제 메일 미발송</strong>이 브라우저 탭에서만 접수·검토 흐름을 체험합니다. 실제 회사 자료는 입력하지 마세요.</div>
 </aside>
 <div class="main">
 <header class="topbar"><div class="breadcrumb">업무시스템&nbsp; / &nbsp;<strong id="bread-current" style="color:#3b5265">인허가 검토 요청</strong></div><div class="topright"><span id="demo-current-role">웹 시연</span><button type="button" id="demo-logout" class="btn">로그아웃</button><div class="avatar">P</div></div></header>
-<div class="mobile-top"><button data-screen="new">새 요청</button><button data-screen="mine">내 요청</button><button data-screen="team">팀 검토함</button></div>
+<div class="mobile-top"><button data-screen="new">새 요청</button><button data-screen="mine">내 요청</button><button data-screen="team">팀 검토함</button><button data-screen="archive">전체 문의·답변</button><button data-screen="history">변경이력</button></div>
 <main class="content">
 <section id="screen-new">
  <div class="topline"><div><div class="eyebrow">PERMIT REVIEW REQUEST</div><h1 class="page-title">인허가 검토 요청</h1><p class="subtitle">변경사항과 검토가 필요한 내용을 입력하면 인허가팀에 전달됩니다.</p></div><span class="pill">신규 요청</span></div>
@@ -108,8 +110,29 @@
  <div class="topline"><div><div class="eyebrow">TEAM WORKSPACE</div><h1 class="page-title">인허가팀 검토함</h1><p class="subtitle">팀원이 검토 건을 선택하고, 최종 검토 결과를 작성하는 업무화면입니다.</p></div><span class="pill">팀원 화면 예시</span></div>
  <div class="notice">ⓘ 시안에서는 팀원 권한·이메일 연결이 없는 상태입니다. <strong>회신 완료(데모)</strong>를 눌러도 실제 메일은 발송되지 않습니다.</div>
  <div class="tabs" id="filters"><button class="filter-btn active" data-filter="전체">전체</button><button class="filter-btn" data-filter="접수">접수</button><button class="filter-btn" data-filter="검토중">검토중</button><button class="filter-btn" data-filter="회신완료">회신완료</button></div>
- <div class="panel list-panel"><div class="list-head"><div class="panel-title">팀 접수 목록</div><div class="help">목록 항목의 “열기”를 선택하세요.</div></div><div class="items" id="team-list"></div></div><div id="team-detail"></div>
+ <div class="field" style="max-width:420px;margin-top:15px"><label for="team-search-demo">제목·접수번호 검색</label><input id="team-search-demo" class="input" placeholder="검색어 입력"></div><div class="panel list-panel"><div class="list-head"><div class="panel-title">팀 접수 목록 (5건씩)</div><div class="help">목록 항목의 “열기”를 선택하세요.</div></div><div class="items" id="team-list"></div><div id="team-pager" class="demo-pager"></div></div><div id="team-detail"></div>
  <div style="text-align:right;margin-top:18px"><button class="btn ghost danger" id="clear-demo">시연 접수 데이터 모두 삭제</button></div>
+</section>
+
+<section id="screen-archive" hidden>
+  <div class="topline"><div><div class="eyebrow">ALL REQUESTS & ANSWERS</div><h1 class="page-title">전체 문의 · 답변 이력</h1><p class="subtitle">시연용 요청과 회신을 연도별로 검색합니다.</p></div><span class="pill">팀 화면 시연</span></div>
+  <div class="notice"><span>ⓘ</span><span>현재 브라우저에 생성한 시연 접수 내역만 조회됩니다. 실제 직원들의 공용 데이터는 아직 연결되지 않았습니다.</span></div>
+  <div class="panel list-panel">
+    <div class="panel-head"><div class="panel-title">전체 검토 이력</div></div>
+    <div class="panel-body"><div class="demo-controls"><label for="archive-year-demo">조회 연도</label><select id="archive-year-demo" class="input" aria-label="조회 연도"><option value="all">전체 연도</option></select><input id="archive-search-demo" class="input" placeholder="제목 · 접수번호 · 부서 검색" aria-label="이력 검색"></div><div id="archive-summary-demo" class="demo-summary"></div></div>
+    <div class="items" id="archive-list-demo"></div><div id="archive-pager-demo" class="demo-pager"></div>
+  </div>
+  <div id="archive-detail"></div>
+</section>
+<section id="screen-history" hidden>
+  <div class="topline"><div><div class="eyebrow">CHANGE HISTORY</div><h1 class="page-title">변경이력</h1><p class="subtitle">검토분야별 또는 요청 팀별로 검토 현황을 조회합니다.</p></div><span class="pill">팀 화면 시연</span></div>
+  <div class="notice"><span>ⓘ</span><span>현재 브라우저의 시연 자료를 기준으로 표시하며, 실제 연도별 이력 DB는 아직 연결되지 않았습니다.</span></div>
+  <div class="panel list-panel">
+    <div class="panel-body"><div class="demo-controls"><label for="history-year-demo">조회 연도</label><select id="history-year-demo" class="input" aria-label="변경이력 연도"><option value="all">전체 연도</option></select><div class="tabs"><button type="button" id="history-category-demo" class="filter-btn active">검토분야별</button><button type="button" id="history-team-demo" class="filter-btn">팀별</button></div></div></div>
+    <div id="history-groups-demo" class="items"></div>
+  </div>
+  <div id="history-detail-demo" class="panel list-panel" hidden><div class="panel-head"><div class="panel-title" id="history-detail-title-demo"></div><button type="button" class="btn" id="history-back-demo">목록으로</button></div><div class="items" id="history-items-demo"></div></div>
+  <div id="history-detail"></div>
 </section>
 </main>
 </div>
@@ -124,7 +147,9 @@ const startDemo = role => {
   loginGate.hidden = true;
   document.getElementById('demo-current-role').textContent = role === 'reviewer' ? '인허가팀 · 시연' : '일반 직원 · 시연';
   document.querySelectorAll('[data-screen]').forEach(button => {
-    button.hidden = role === 'requester' ? button.dataset.screen === 'team' : button.dataset.screen !== 'team';
+    button.hidden = role === 'requester' ? ['team','archive','history'].includes(button.dataset.screen) : !['team','archive','history'].includes(button.dataset.screen);
+    if(role === 'reviewer' && ['team','archive','history'].includes(button.dataset.screen)) button.hidden=false;
+    if(role === 'requester' && ['team','archive','history'].includes(button.dataset.screen)) button.hidden=true;
     if(button.hidden)button.style.display = 'none'; else button.style.removeProperty('display');
   });
   setScreen(role === 'reviewer' ? 'team' : 'new');
@@ -142,7 +167,7 @@ $('request-date').value=nowDate();const escape=(s)=>String(s??'').replace(/[&<>"
 function notice(s){const t=$('toast');t.textContent=s;t.classList.add('show');clearTimeout(notice.t);notice.t=setTimeout(()=>t.classList.remove('show'),3600)}
 function store(){try{sessionStorage.setItem(STORAGE,JSON.stringify(requests))}catch{notice('이 브라우저에서는 임시 저장이 제한될 수 있습니다.')}updateCounts()}
 function updateCounts(){$('mine-count').textContent=requests.length;$('team-count').textContent=requests.filter(r=>r.status!=='회신완료').length}
-function setScreen(v){if(demoRole==='requester'&&v==='team')return;if(demoRole==='reviewer'&&v!=='team')return;active=v;['new','mine','team'].forEach(x=>{$('screen-'+x).hidden=x!==v;document.querySelectorAll('[data-screen="'+x+'"]').forEach(b=>b.classList.toggle('active',x===v))});$('bread-current').textContent=({new:'인허가 검토 요청',mine:'내 요청 현황',team:'인허가팀 검토함'})[v];if(v==='mine')renderMine();if(v==='team')renderTeam();window.scrollTo({top:0,behavior:'instant'})}
+function setScreen(v){if(demoRole==='requester'&&['team','archive','history'].includes(v))return;if(demoRole==='reviewer'&&!['team','archive','history'].includes(v))return;active=v;['new','mine','team','archive','history'].forEach(x=>{$('screen-'+x).hidden=x!==v;document.querySelectorAll('[data-screen="'+x+'"]').forEach(b=>b.classList.toggle('active',x===v))});$('bread-current').textContent=({new:'인허가 검토 요청',mine:'내 요청 현황',team:'인허가팀 검토함',archive:'전체 문의 · 답변 이력',history:'변경이력'})[v];if(v==='mine')renderMine();if(v==='team')renderTeam();if(v==='archive')renderArchiveDemo();if(v==='history')renderHistoryDemo();window.scrollTo({top:0,behavior:'instant'})}
 document.querySelectorAll('[data-screen]').forEach(b=>b.addEventListener('click',()=>setScreen(b.dataset.screen)));
 function getForm(){return {department:$('department').value.trim(),requester:$('requester').value.trim(),email:$('email').value.trim(),date:$('request-date').value,title:$('title').value.trim(),site:$('site').value.trim(),category:$('category').value,question:$('question').value.trim(),current:$('current').value.trim(),purpose:$('purpose').value.trim(),fileNames:Array.from($('file-input').files||[]).map(f=>f.name)}}
 function updatePreview(){let f=getForm();$('prev-title').textContent=f.title||'요청 제목을 입력해 주세요';$('prev-date').textContent=f.date?'요청일자 · '+f.date:'요청일자를 선택해 주세요';$('prev-person').textContent=[f.department,f.requester].filter(Boolean).join(' / ')||'미입력';$('prev-meta').textContent=[f.site,f.category].filter(Boolean).join(' / ')||'미입력';$('prev-question').textContent=f.question||'내용을 입력하면 여기에 표시됩니다.';$('prev-question').classList.toggle('muted-val',!f.question);$('prev-file').textContent=f.fileNames.length?f.fileNames.join(', '):'선택된 파일 없음';$('file-list').innerHTML=f.fileNames.map(x=>'<li>📎 '+escape(x)+'</li>').join('')}
@@ -151,8 +176,51 @@ $('sample-btn').addEventListener('click',()=>{let map={department:'시설센터'
 $('request-form').addEventListener('submit',e=>{e.preventDefault();const f=getForm();for(const key of ['department','requester','email','date','title','question','current','purpose']){let el=$(key==='date'?'request-date':key);if(!el.value.trim()){el.focus();notice('필수 입력 항목을 확인해 주세요.');return}}if(!$('email').checkValidity()){$('email').focus();notice('이메일 형식을 확인해 주세요.');return}const seq=String(requests.length?Math.max(...requests.map(r=>Number((r.id||'').split('-').pop())||0))+1:1).padStart(3,'0');const id=new Date().getFullYear()+'-'+seq;const r={...f,id,status:'접수',assigned:'',review:null,created:new Date().toISOString()};requests.unshift(r);store();$('request-form').reset();$('request-date').value=nowDate();updatePreview();setScreen('mine');notice('['+id+'] 시연용 접수가 완료됐습니다. 실제 메일은 발송되지 않았습니다.')});
 function listCard(r,isTeam){return `<div class="item-card"><div style="min-width:0"><span class="id">#${escape(r.id)}</span><h3>${escape(r.title)}</h3><div class="meta">${escape(r.department)} · ${escape(r.requester)} · ${escape(r.date)} · 담당 ${escape(r.assigned||'미지정')}</div></div><div style="display:flex;gap:10px;align-items:center"><span class="status ${escape(r.status)}">${escape(r.status)}</span><button class="btn soft" data-open="${escape(r.id)}" data-view="${isTeam?'team':'mine'}">열기 →</button></div></div>`}
 function renderMine(){let root=$('mine-list');root.innerHTML=requests.length?requests.map(r=>listCard(r,false)).join(''):'<div class="empty">아직 접수된 요청이 없습니다.<br/>새 검토 요청에서 예시 내용을 입력해 보세요.</div>';$('mine-detail').innerHTML='';}
-function renderTeam(){document.querySelectorAll('[data-filter]').forEach(b=>b.classList.toggle('active',b.dataset.filter===filter));let a=requests.filter(r=>filter==='전체'||r.status===filter);$('team-list').innerHTML=a.length?a.map(r=>listCard(r,true)).join(''):'<div class="empty">이 상태에 해당하는 요청이 없습니다.<br/>새 검토 요청에서 시연용 건을 접수해 보세요.</div>';$('team-detail').innerHTML=''}
-$('filters').addEventListener('click',e=>{let b=e.target.closest('[data-filter]');if(!b)return;filter=b.dataset.filter;renderTeam()});
+let teamPage=1;let archivePage=1;let historyMode='category';
+function pagingControls(root, total, page, changePage) {
+  const pageCount=Math.max(1,Math.ceil(total/5));
+  const current=Math.min(pageCount,Math.max(1,page));
+  root.innerHTML='<div class="demo-paging"><button type="button" class="btn" data-pg="prev" '+(current===1?'disabled':'')+'>이전</button><span>'+current+' / '+pageCount+' 페이지 · '+total+'건</span><button type="button" class="btn" data-pg="next" '+(current===pageCount?'disabled':'')+'>다음</button></div>';
+  root.querySelectorAll('button').forEach(button=>button.onclick=()=>changePage(current+(button.dataset.pg==='prev'?-1:1)));
+}
+function renderTeam(){document.querySelectorAll('[data-filter]').forEach(b=>b.classList.toggle('active',b.dataset.filter===filter));const term=$('team-search-demo').value.trim().toLowerCase();let a=requests.filter(r=>(filter==='전체'||r.status===filter)&&(!term||[r.id,r.title,r.department,r.requester].some(x=>String(x||'').toLowerCase().includes(term))));teamPage=Math.max(1,Math.min(teamPage,Math.ceil(a.length/5)||1));$('team-list').innerHTML=a.length?a.slice((teamPage-1)*5,teamPage*5).map(r=>listCard(r,true)).join(''):'<div class="empty">이 상태에 해당하는 요청이 없습니다.<br/>새 검토 요청에서 시연용 건을 접수해 보세요.</div>';pagingControls($('team-pager'),a.length,teamPage,n=>{teamPage=n;renderTeam()});$('team-detail').innerHTML=''}
+function yearsDemo(selectId) {
+ const el=$(selectId), chosen=el.value;
+ el.innerHTML='<option value="all">전체 연도</option>'+[...new Set(requests.map(r=>String(r.date||r.created||'').slice(0,4)).filter(y=>/^\\d{4}$/.test(y)))].sort().reverse().map(y=>'<option value="'+escape(y)+'">'+escape(y)+'년</option>').join('');
+ el.value=[...el.options].some(o=>o.value===chosen)?chosen:'all';
+}
+function archiveFilteredDemo(){
+ const y=$('archive-year-demo').value,term=$('archive-search-demo').value.trim().toLowerCase();
+ return requests.filter(r=>(y==='all'||String(r.date||r.created||'').startsWith(y))&&(!term||[r.id,r.title,r.department,r.requester,r.category].some(x=>String(x||'').toLowerCase().includes(term))));
+}
+function renderArchiveDemo(){yearsDemo('archive-year-demo');const a=archiveFilteredDemo();const completed=a.filter(r=>r.status==='회신완료').length;archivePage=Math.max(1,Math.min(archivePage,Math.ceil(a.length/5)||1));$('archive-summary-demo').textContent='전체 '+a.length+'건 · 접수 '+a.filter(r=>r.status==='접수').length+'건 · 검토중 '+a.filter(r=>r.status==='검토중').length+'건 · 회신완료 '+completed+'건';$('archive-list-demo').innerHTML=a.length?a.slice((archivePage-1)*5,archivePage*5).map(r=>listCard(r,false).replace('data-view="mine"','data-view="archive"')).join(''):'<div class="empty">조회된 시연 이력이 없습니다.</div>';pagingControls($('archive-pager-demo'),a.length,archivePage,n=>{archivePage=n;renderArchiveDemo()});$('archive-detail').innerHTML='';}
+function renderHistoryDemo(){
+ yearsDemo('history-year-demo');
+ $('history-category-demo').classList.toggle('active',historyMode==='category');
+ $('history-team-demo').classList.toggle('active',historyMode==='team');
+ const year=$('history-year-demo').value;
+ const a=requests.filter(r=>year==='all'||String(r.date||r.created||'').startsWith(year));
+ const groups=new Map();
+ for(const r of a){const group=historyMode==='category'?(r.category||'미분류'):(r.department||'부서 미입력');if(!groups.has(group))groups.set(group,[]);groups.get(group).push(r);}
+ $('history-groups-demo').innerHTML=groups.size?[...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],'ko')).map(([k,v],i)=>'<div class="item-card"><div><h3>'+escape(k)+'</h3><div class="meta">문의 '+v.length+'건 · 확정 '+v.filter(r=>r.status==='회신완료').length+'건</div></div><button type="button" class="btn soft" data-history-group="'+i+'">조회 →</button></div>').join(''):'<div class="empty">현재 선택한 연도에는 시연 데이터가 없습니다.</div>';
+ $('history-detail-demo').hidden=true;$('history-detail').innerHTML='';
+ const entries=[...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],'ko'));
+ $('history-groups-demo').querySelectorAll('[data-history-group]').forEach(button=>button.onclick=()=>{
+   const [name,items]=entries[Number(button.dataset.historyGroup)];
+   $('history-detail-title-demo').textContent=name+' · '+items.length+'건';
+   $('history-items-demo').innerHTML=items.map(r=>listCard(r,false).replace('data-view="mine"','data-view="history"')).join('');
+   $('history-detail-demo').hidden=false;
+ });
+}
+$('team-search-demo').addEventListener('input',()=>{teamPage=1;renderTeam()});
+$('archive-year-demo').addEventListener('change',()=>{archivePage=1;renderArchiveDemo()});
+$('archive-search-demo').addEventListener('input',()=>{archivePage=1;renderArchiveDemo()});
+$('history-year-demo').addEventListener('change',renderHistoryDemo);
+$('history-category-demo').addEventListener('click',()=>{historyMode='category';renderHistoryDemo()});
+$('history-team-demo').addEventListener('click',()=>{historyMode='team';renderHistoryDemo()});
+$('history-back-demo').addEventListener('click',()=>{$('history-detail-demo').hidden=true;$('history-detail').innerHTML='';});
+
+$('filters').addEventListener('click',e=>{let b=e.target.closest('[data-filter]');if(!b)return;filter=b.dataset.filter;teamPage=1;renderTeam()});
 function viewDetail(r,isTeam){let head=`<div class="drawer"><div class="detail-header"><div><span class="id">#${escape(r.id)}</span><div class="detail-h">${escape(r.title)}</div><div class="meta">접수 ${escape(r.date)} · ${escape(r.department)} / ${escape(r.requester)} · ${escape(r.email)}</div></div><span class="status ${escape(r.status)}">${escape(r.status)}</span></div><div class="detail-grid"><div><div class="sum-key">사업장</div><div class="block-val">${fmt(r.site)}</div></div><div><div class="sum-key">검토분야</div><div class="block-val">${fmt(r.category)}</div></div><div class="wide"><div class="sum-key">변경 요청사항</div><div class="block-val">${fmt(r.question)}</div></div><div class="wide"><div class="sum-key">현재 현황</div><div class="block-val">${fmt(r.current)}</div></div><div class="wide"><div class="sum-key">변경 필요성</div><div class="block-val">${fmt(r.purpose)}</div></div><div class="wide"><div class="sum-key">첨부 파일 (시안에서는 파일명만 기록)</div><div class="block-val">${r.fileNames.length?r.fileNames.map(escape).join(' · '):'없음'}</div></div></div><div class="divider"></div>`;
 if(!isTeam){head+=r.review?`<div class="review-form"><h3>회신 결과</h3><div class="sum-key">회신 담당자 / 회신일</div><div class="block-val">${escape(r.assigned)} / ${escape(r.review.sentAt||'발송 전')}</div><div class="sum-key" style="margin-top:12px">검토 의견</div><div class="block-val">${fmt(r.review.result)}</div><div class="sum-key" style="margin-top:12px">적용 법령 및 근거</div><div class="block-val">${fmt(r.review.law)}</div><div class="sum-key" style="margin-top:12px">필요 조치·소요기간</div><div class="block-val">${fmt(r.review.action)} / ${fmt(r.review.period)}</div></div>`:'<div class="review-form"><h3>진행 현황</h3><div class="right-review-note">아직 최종 회신이 등록되지 않았습니다. 검토 담당자가 처리 중입니다.</div></div>';return head+'</div>'}
 let rev=r.review||{};head+=`<div class="review-form"><h3>담당자 지정 및 검토 회신</h3><div class="right-review-note">시안에서는 회신 완료를 눌러도 메일이 발송되지 않습니다. 실제 운영에서는 인증된 담당자만 발송하며 처리이력이 저장됩니다.</div>
