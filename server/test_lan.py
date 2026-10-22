@@ -55,6 +55,36 @@ class LanServerTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(json.loads(health)["storage"], "server")
 
+    def test_staff_can_self_register_but_not_claim_review_role(self):
+        os.environ["PERMIT_ENABLE_TEST_SELF_SIGNUP"] = "1"
+        try:
+            email = "staff.selftest@hdc-resort.com"
+            def post(data):
+                body = json.dumps(data).encode()
+                req = Request(self.base + "/api/signup", body,
+                              headers={"Content-Type": "application/json", "Origin": self.base})
+                try:
+                    with urlopen(req, timeout=5) as response:
+                        return response.status, json.loads(response.read())
+                except __import__("urllib.error", fromlist=["HTTPError"]).HTTPError as err:
+                    return err.code, json.loads(err.read())
+            status, _ = post({"email": email, "password": "12345"})
+            self.assertEqual(status, 400)
+            status, account = post({"email": email, "password": "abcdef", "role": "reviewer"})
+            self.assertEqual(status, 201)
+            self.assertEqual(account["role"], "requester")
+            self.assertIs(account["verified"], False)
+            status, _ = post({"email": email, "password": "abcdef"})
+            self.assertEqual(status, 400)
+            login_body = json.dumps({"email": email, "password": "abcdef"}).encode()
+            req = Request(self.base + "/api/login", login_body,
+                          headers={"Content-Type": "application/json", "Origin": self.base})
+            with urlopen(req, timeout=5) as response:
+                user = json.loads(response.read())["user"]
+            self.assertEqual(user["role"], "requester")
+        finally:
+            os.environ.pop("PERMIT_ENABLE_TEST_SELF_SIGNUP", None)
+
     def test_post_login_from_lan_origin_and_db_reopen(self):
         body = json.dumps({"email": "minjeong.kang@hdc-resort.com",
                            "password": "abcdef"}).encode()
