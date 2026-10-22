@@ -40,10 +40,7 @@
     const data = await request('/api/login','POST',{email,password});
     if (!data.token || !data.user) throw Error('로그인 응답이 올바르지 않습니다.');
     token = data.token;user = data.user;sessionStorage.setItem(TOKEN_KEY,token);
-    return user;
-  }
-  async function signup(email,password){
-    return request('/api/signup','POST',{email,password});
+    return {...user, firstLoginCreated: data.created === true};
   }
   async function restore() {
     if (!token) return null;
@@ -96,7 +93,7 @@
   async function addUser(email,password,role){
     return request('/api/users','POST',{email,password,role});
   }
-  window.PERMIT_LIVE = {enabled,login,signup,restore,logout,load,create,upload,download,review,addUser,
+  window.PERMIT_LIVE = {enabled,login,restore,logout,load,create,upload,download,review,addUser,
     get user(){return user},
     get connected(){return !!user}
   };
