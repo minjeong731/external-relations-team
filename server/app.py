@@ -346,6 +346,9 @@ class Handler(BaseHTTPRequestHandler):
                 m = re.fullmatch(r"/api/users/(\d+)/reset-password", path)
                 if m:
                     return self.reset_password(db, who, int(m[1]), body)
+                m = re.fullmatch(r"/api/users/(\d+)/role", path)
+                if m:
+                    return self.update_staff_role(db, who, int(m[1]), body)
                 if path == "/api/tickets":
                     return self.create_ticket(db, who, body)
                 m = re.fullmatch(r"/api/tickets/(\d{4}-\d+)/attachments", path)
@@ -362,6 +365,40 @@ class Handler(BaseHTTPRequestHandler):
             logging.exception("Server error")
             return self.json_response(500, {"error": "서버 처리 중 오류가 발생했습니다."})
         self.json_response(404, {"error": "API 경로를 찾을 수 없습니다."})
+
+    def update_staff_role(self, db, who, target_id, body):
+        """Only an existing administrator may grant or revoke reviewer privileges."""
+        if who["role"] != "admin":
+            return self.json_response(403, {"error": "관리자만 계정 권한을 변경할 수 있습니다."})
+        desired = field(body, "role", True, 30)
+        if desired not in ("requester", "reviewer"):
+            return self.json_response(400, {"error": "일반 직원 또는 인허가팀 권한만 지정할 수 있습니다."})
+        admin_password = field(body, "adminPassword", True, 200)
+        admin_record = db.execute("SELECT passhash FROM users WHERE id=?",
+                                  (who["id"],)).fetchone()
+        if not admin_record or not verify(admin_password, admin_record["passhash"]):
+            return self.json_response(403, {"error": "관리자 비밀번호가 일치하지 않습니다."})
+        target = db.execute("SELECT id,email,role FROM users WHERE id=?",
+                            (target_id,)).fetchone()
+        if not target:
+            return self.json_response(404, {"error": "직원 계정을 찾을 수 없습니다."})
+        if target["role"] == "admin":
+            return self.json_response(403, {"error": "관리자 계정의 권한은 변경할 수 없습니다."})
+        if target["role"] == desired:
+            return self.json_response(200, {"ok": True, "unchanged": True,
+                                            "email": target["email"], "role": desired})
+        db.execute("UPDATE users SET role=? WHERE id=?", (desired, target_id))
+        # Existing sessions are removed so the employee signs in again
+        # and receives the correct reviewer/requester menus.
+        db.execute("DELETE FROM sessions WHERE user_id=?", (target_id,))
+        db.execute("""INSERT INTO security_events(actor_id,target_id,action,occurred)
+                      VALUES(?,?,?,?)""",
+                   (who["id"], target_id,
+                    "인허가팀 권한 부여" if desired == "reviewer" else "인허가팀 권한 해제",
+                    now()))
+        db.commit()
+        return self.json_response(200, {"ok": True, "email": target["email"],
+                                        "role": desired, "requiresRelogin": True})
 
     def reset_password(self, db, who, target_id, body):
         if who["role"] != "admin":
