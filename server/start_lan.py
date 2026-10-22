@@ -38,11 +38,12 @@ def prepare_first_admin():
     print("\n최초 관리자 계정 설정 (비밀번호는 화면에 표시되지 않습니다)")
     print("계정: " + os.environ.get("PERMIT_ADMIN_EMAIL", "minjeong.kang@hdc-resort.com"))
     print("비밀번호는 이 PC에 직접 입력하고, 대화창이나 GitHub에 올리지 마세요.")
+    print("주의: 6자 비밀번호는 가상 자료를 사용하는 초기 테스트에만 권장합니다.")
     while True:
-        password = getpass.getpass("12자 이상 관리자 비밀번호: ")
+        password = getpass.getpass("6자 이상 관리자 비밀번호: ")
         confirm = getpass.getpass("한 번 더 입력: ")
-        if len(password) < 12:
-            print("비밀번호는 12자 이상이어야 합니다.")
+        if len(password) < 6:
+            print("비밀번호는 6자 이상이어야 합니다.")
         elif password != confirm:
             print("입력한 비밀번호가 서로 다릅니다.")
         else:
