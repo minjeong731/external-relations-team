@@ -40,6 +40,16 @@ class LanServerTests(unittest.TestCase):
         with urlopen(self.base + path, timeout=5) as response:
             return response.status, response.read().decode()
 
+    def test_category_and_assignee_removed_from_request_form(self):
+        code, html = self.get("/")
+        self.assertEqual(code, 200)
+        form = html.split('<form id="request-form"', 1)[1].split("</form>", 1)[0]
+        self.assertNotIn('id="category"', form)
+        self.assertNotIn('id="assignee"', html)
+        self.assertIn('id="review-category"', html)
+        self.assertIn("검토분야를 선택해 주세요", html)
+        self.assertIn("인허가팀 권한이 있는 직원 누구나", html)
+
     def test_requester_dashboard_shows_mine_above_new_form(self):
         status, html = self.get("/")
         self.assertEqual(status, 200)
