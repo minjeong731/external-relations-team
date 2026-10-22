@@ -150,6 +150,86 @@ class LanServerTests(unittest.TestCase):
             self.assertGreaterEqual(db.execute("SELECT COUNT(*) FROM security_events WHERE target_id=?",(owner_id,)).fetchone()[0],2)
             self.assertEqual(db.execute("SELECT owner_id FROM tickets WHERE id=?",(ticket_id,)).fetchone()[0],owner_id)
 
+    def test_admin_promotes_self_created_account_without_changing_password(self):
+        import urllib.error
+        def api(path, body=None, token=None):
+            headers={"Origin": self.base}
+            if token: headers["Authorization"]="Bearer "+token
+            if body is not None: headers["Content-Type"]="application/json"
+            req=Request(self.base+path, json.dumps(body).encode() if body is not None else None,headers=headers)
+            try:
+                with urlopen(req,timeout=8) as response:
+                    return response.status,json.loads(response.read())
+            except urllib.error.HTTPError as err:
+                return err.code,json.loads(err.read())
+        status,admin_login=api("/api/login",{"email":"minjeong.kang@hdc-resort.com","password":"abcdef"})
+        self.assertEqual(status,200)
+        admin=admin_login["token"]
+        employee_email="role-change-employee@hdc-resort.com"
+        os.environ["PERMIT_ENABLE_TEST_AUTO_ACCOUNT"]="1"
+        try:
+            status,initial=api("/api/login",{"email":employee_email,"password":"worker-pass-123","role":"admin"})
+            self.assertEqual(status,200)
+            self.assertTrue(initial["created"])
+            self.assertEqual(initial["user"]["role"],"requester")
+            staff=initial["token"]
+            staff_id=initial["user"]["id"]
+            with app.connection() as db:
+                prior_hash=db.execute("SELECT passhash FROM users WHERE id=?",(staff_id,)).fetchone()[0]
+            ticket={"department":"샘플부서","requester":"가상 사용자","date":"2026-10-22",
+                    "title":"권한 변경 전 접수","site":"가상 현장","category":"기타",
+                    "question":"가상 질문","current":"현황","purpose":"테스트"}
+            status,created=api("/api/tickets",ticket,staff)
+            self.assertEqual(status,201)
+            ticket_id=created["ticket"]["id"]
+            status,all_users=api("/api/users",token=admin)
+            self.assertEqual(status,200)
+            user=next(x for x in all_users["users"] if x["email"]==employee_email)
+            self.assertEqual(user["role"],"requester")
+            self.assertTrue(user["created"].startswith("2026-"))
+            endpoint="/api/users/"+str(staff_id)+"/role"
+            status,_=api(endpoint,{"role":"reviewer","adminPassword":"abcdef"},staff)
+            self.assertEqual(status,403)
+            status,_=api(endpoint,{"role":"reviewer","adminPassword":"wrong"},admin)
+            self.assertEqual(status,403)
+            status,_=api(endpoint,{"role":"admin","adminPassword":"abcdef"},admin)
+            self.assertEqual(status,400)
+            admin_id=admin_login["user"]["id"]
+            status,_=api("/api/users/"+str(admin_id)+"/role",
+                         {"role":"requester","adminPassword":"abcdef"},admin)
+            self.assertEqual(status,403)
+            status,upgraded=api(endpoint,{"role":"reviewer","adminPassword":"abcdef"},admin)
+            self.assertEqual(status,200)
+            self.assertEqual(upgraded["role"],"reviewer")
+            self.assertTrue(upgraded["requiresRelogin"])
+            status,_=api("/api/tickets",token=staff)
+            self.assertEqual(status,401) # Old session invalidated
+            status,reviewer_login=api("/api/login",{"email":employee_email,"password":"worker-pass-123"})
+            self.assertEqual(status,200)
+            self.assertFalse(reviewer_login["created"])
+            self.assertEqual(reviewer_login["user"]["role"],"reviewer")
+            status,requests=api("/api/tickets",token=reviewer_login["token"])
+            self.assertEqual(status,200)
+            self.assertIn(ticket_id,[r["id"] for r in requests["tickets"]])
+            with app.connection() as db:
+                self.assertEqual(db.execute("SELECT passhash FROM users WHERE id=?",(staff_id,)).fetchone()[0],prior_hash)
+                action=db.execute("SELECT action FROM security_events WHERE target_id=? ORDER BY id DESC",(staff_id,)).fetchone()[0]
+                self.assertEqual(action,"인허가팀 권한 부여")
+            status,demoted=api(endpoint,{"role":"requester","adminPassword":"abcdef"},admin)
+            self.assertEqual(status,200)
+            self.assertEqual(demoted["role"],"requester")
+            status,staff_again=api("/api/login",{"email":employee_email,"password":"worker-pass-123"})
+            self.assertEqual(status,200)
+            self.assertEqual(staff_again["user"]["role"],"requester")
+            status,requests=api("/api/tickets",token=staff_again["token"])
+            self.assertEqual(status,200)
+            self.assertEqual([r["id"] for r in requests["tickets"]],[ticket_id])
+            with app.connection() as db:
+                self.assertEqual(db.execute("SELECT COUNT(*) FROM users WHERE email=?",(employee_email,)).fetchone()[0],1)
+                self.assertEqual(db.execute("SELECT passhash FROM users WHERE id=?",(staff_id,)).fetchone()[0],prior_hash)
+        finally:
+            os.environ.pop("PERMIT_ENABLE_TEST_AUTO_ACCOUNT",None)
+
     def test_first_login_auto_creates_requester_only(self):
         import urllib.error
         email = "staff.firstlogin@hdc-resort.com"
