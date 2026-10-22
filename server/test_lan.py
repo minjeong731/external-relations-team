@@ -55,35 +55,41 @@ class LanServerTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(json.loads(health)["storage"], "server")
 
-    def test_staff_can_self_register_but_not_claim_review_role(self):
-        os.environ["PERMIT_ENABLE_TEST_SELF_SIGNUP"] = "1"
-        try:
-            email = "staff.selftest@hdc-resort.com"
-            def post(data):
-                body = json.dumps(data).encode()
-                req = Request(self.base + "/api/signup", body,
-                              headers={"Content-Type": "application/json", "Origin": self.base})
-                try:
-                    with urlopen(req, timeout=5) as response:
-                        return response.status, json.loads(response.read())
-                except __import__("urllib.error", fromlist=["HTTPError"]).HTTPError as err:
-                    return err.code, json.loads(err.read())
-            status, _ = post({"email": email, "password": "12345"})
-            self.assertEqual(status, 400)
-            status, account = post({"email": email, "password": "abcdef", "role": "reviewer"})
-            self.assertEqual(status, 201)
-            self.assertEqual(account["role"], "requester")
-            self.assertIs(account["verified"], False)
-            status, _ = post({"email": email, "password": "abcdef"})
-            self.assertEqual(status, 400)
-            login_body = json.dumps({"email": email, "password": "abcdef"}).encode()
-            req = Request(self.base + "/api/login", login_body,
+    def test_first_login_auto_creates_requester_only(self):
+        import urllib.error
+        email = "staff.firstlogin@hdc-resort.com"
+        def post(data, path="/api/login"):
+            body = json.dumps(data).encode()
+            req = Request(self.base + path, body,
                           headers={"Content-Type": "application/json", "Origin": self.base})
-            with urlopen(req, timeout=5) as response:
-                user = json.loads(response.read())["user"]
-            self.assertEqual(user["role"], "requester")
+            try:
+                with urlopen(req, timeout=5) as response:
+                    return response.status, json.loads(response.read())
+            except urllib.error.HTTPError as err:
+                return err.code, json.loads(err.read())
+        status, _ = post({"email": email, "password": "abcdef"})
+        self.assertEqual(status, 401)  # No automatic accounts outside PC pilot.
+        os.environ["PERMIT_ENABLE_TEST_AUTO_ACCOUNT"] = "1"
+        try:
+            status, _ = post({"email": email, "password": "abcde"})
+            self.assertEqual(status, 400)
+            status, created = post({"email": email, "password": "abcdef", "role": "admin"})
+            self.assertEqual(status, 200)
+            self.assertTrue(created["created"])
+            self.assertEqual(created["user"]["role"], "requester")
+            status, _ = post({"email": email, "password": "wrongpw"})
+            self.assertEqual(status, 401)  # Cannot reset another person's password.
+            status, logged_in = post({"email": email, "password": "abcdef"})
+            self.assertEqual(status, 200)
+            self.assertFalse(logged_in["created"])
+            self.assertEqual(logged_in["user"]["id"], created["user"]["id"])
+            with app.connection() as db:
+                count = db.execute("SELECT COUNT(*) FROM users WHERE email=?", (email,)).fetchone()[0]
+            self.assertEqual(count, 1)
+            status, _ = post({"email": "staff.other@hdc-resort.com", "password": "abcdef"}, "/api/signup")
+            self.assertEqual(status, 404)  # No separate signup route anymore.
         finally:
-            os.environ.pop("PERMIT_ENABLE_TEST_SELF_SIGNUP", None)
+            os.environ.pop("PERMIT_ENABLE_TEST_AUTO_ACCOUNT", None)
 
     def test_post_login_from_lan_origin_and_db_reopen(self):
         body = json.dumps({"email": "minjeong.kang@hdc-resort.com",
