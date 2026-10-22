@@ -5,6 +5,7 @@ configured, and the insecure auto-account pilot mode has been turned off.
 Credentials must be injected as environment variables on the internal server.
 """
 from email.message import EmailMessage
+from email.utils import formataddr
 import os
 import re
 import smtplib
@@ -24,6 +25,9 @@ def mail_config():
     host = os.environ.get("PERMIT_SMTP_HOST", "").strip()
     from_address = os.environ.get("PERMIT_MAIL_FROM", "").strip().lower()
     team = os.environ.get("PERMIT_TEAM_MAIL", "").strip().lower()
+    from_name = os.environ.get("PERMIT_MAIL_FROM_NAME", "인허가 검토 시스템").strip()
+    if not from_name or len(from_name) > 60 or "\r" in from_name or "\n" in from_name:
+        return None
     if not host or not COMPANY_ADDRESS.fullmatch(from_address) or not COMPANY_ADDRESS.fullmatch(team):
         return None
     try:
@@ -34,7 +38,7 @@ def mail_config():
         return None
     return {
         "host": host, "port": port, "mode": mode,
-        "from": from_address, "team": team,
+        "from": from_address, "from_name": from_name, "team": team,
         "username": os.environ.get("PERMIT_SMTP_USER", ""),
         "password": os.environ.get("PERMIT_SMTP_PASSWORD", "")
     }
@@ -73,7 +77,7 @@ def make_message(event, ticket, config):
     else:
         raise ValueError("지원하지 않는 메일 이벤트입니다.")
     message = EmailMessage()
-    message["From"] = config["from"]
+    message["From"] = formataddr((config.get("from_name", "인허가 검토 시스템"), config["from"]))
     message["To"] = destination
     message["Subject"] = subject.replace("\r", " ").replace("\n", " ")[:200]
     message.set_content(body)
