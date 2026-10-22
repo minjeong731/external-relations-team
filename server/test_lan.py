@@ -53,6 +53,11 @@ class LanServerTests(unittest.TestCase):
         self.assertIn('data-screen="admin" id="admin-mobile-menu" hidden', html)
         self.assertIn("screen === 'admin' && isAdmin", html)
         self.assertIn("live.user?.role==='admin'", html)
+        self.assertIn('id="live-accounts-list"', admin)
+        self.assertIn('id="live-role-form"', admin)
+        self.assertNotIn('id="live-admin-form"', admin)
+        self.assertIn("live.updateUserRole(target.id,destination", html)
+
 
     def test_same_origin_web_and_runtime_config(self):
         status, html = self.get("/")
