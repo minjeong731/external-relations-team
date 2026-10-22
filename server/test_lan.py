@@ -40,6 +40,20 @@ class LanServerTests(unittest.TestCase):
         with urlopen(self.base + path, timeout=5) as response:
             return response.status, response.read().decode()
 
+    def test_admin_settings_are_separate_from_review_inbox(self):
+        status, html = self.get("/")
+        self.assertEqual(status, 200)
+        review = html.split('<section id="screen-team" hidden>', 1)[1].split('<section id="screen-admin" hidden>', 1)[0]
+        admin = html.split('<section id="screen-admin" hidden>', 1)[1].split('<section id="screen-archive" hidden>', 1)[0]
+        self.assertNotIn('id="live-admin-users"', review)
+        self.assertNotIn('id="live-reset-form"', review)
+        self.assertIn('id="live-admin-users"', admin)
+        self.assertIn('id="live-reset-form"', admin)
+        self.assertIn('data-screen="admin" id="admin-menu" hidden', html)
+        self.assertIn('data-screen="admin" id="admin-mobile-menu" hidden', html)
+        self.assertIn("screen === 'admin' && isAdmin", html)
+        self.assertIn("live.user?.role==='admin'", html)
+
     def test_same_origin_web_and_runtime_config(self):
         status, html = self.get("/")
         self.assertEqual(status, 200)
