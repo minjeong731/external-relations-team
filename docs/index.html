@@ -380,10 +380,10 @@ async function enterLiveMode(user){
   return;
  }
  changeGate.hidden=true;
+ requests=[];updateCounts();
  startDemo(user.role==='requester'?'requester':'reviewer');
  document.getElementById('demo-current-role').textContent=user.email+' · 공동 저장';
  const emailBox=document.getElementById('email');emailBox.value=user.email.split('@')[0];emailBox.readOnly=true;
- requests=[];updateCounts();
  await refreshRemote();
  if(user.role==='admin')await refreshAdminUsers();
 }
