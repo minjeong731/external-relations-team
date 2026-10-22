@@ -635,8 +635,23 @@ $('history-team-demo').addEventListener('click',()=>{historyMode='team';renderHi
 $('history-back-demo').addEventListener('click',()=>{$('history-detail-demo').hidden=true;$('history-detail').innerHTML='';});
 
 $('filters').addEventListener('click',e=>{let b=e.target.closest('[data-filter]');if(!b)return;filter=b.dataset.filter;teamPage=1;renderTeam()});
+function formatReplyDate(value){
+ if(!value)return '발송 전';
+ const original=String(value).trim();
+ // Old demonstration records already have localized dates. Keep them untouched.
+ if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(original))return original;
+ const instant=new Date(original);
+ if(Number.isNaN(instant.getTime()))return original;
+ const parts=Object.fromEntries(
+  new Intl.DateTimeFormat('ko-KR',{
+   timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit',
+   hour:'2-digit',minute:'2-digit',hourCycle:'h23'
+  }).formatToParts(instant).filter(p=>p.type!=='literal').map(p=>[p.type,p.value])
+ );
+ return parts.year+'-'+parts.month+'-'+parts.day+' '+parts.hour+':'+parts.minute;
+}
 function viewDetail(r,isTeam){let head=`<div class="drawer"><div class="detail-header"><div><span class="id">#${escape(r.id)}</span><div class="detail-h">${escape(r.title)}</div><div class="meta">접수 ${escape(r.date)} · ${escape(r.department)} / ${escape(r.requester)} · ${escape(r.email)}</div></div><span class="status ${escape(r.status)}">${escape(r.status)}</span></div><div class="detail-grid"><div><div class="sum-key">사업장</div><div class="block-val">${fmt(r.site)}</div></div><div><div class="sum-key">검토분야</div><div class="block-val">${fmt(r.category)}</div></div><div class="wide"><div class="sum-key">변경 요청사항</div><div class="block-val">${fmt(r.question)}</div></div><div class="wide"><div class="sum-key">현재 현황</div><div class="block-val">${fmt(r.current)}</div></div><div class="wide"><div class="sum-key">변경 필요성</div><div class="block-val">${fmt(r.purpose)}</div></div><div class="wide"><div class="sum-key">첨부 파일 · 사진 크게 보기 / PDF 미리보기 / 도면 다운로드</div><div class="block-val attachment-gallery">첨부파일 불러오는 중…</div></div></div><div class="divider"></div>`;
-if(!isTeam){head+=r.review?`<div class="review-form"><h3>회신 결과</h3><div class="sum-key">회신 담당자 / 회신일</div><div class="block-val">${escape(r.assigned)} / ${escape(r.review.sentAt||'발송 전')}</div><div class="sum-key" style="margin-top:12px">검토 의견</div><div class="block-val">${fmt(r.review.result)}</div><div class="sum-key" style="margin-top:12px">적용 법령 및 근거</div><div class="block-val">${fmt(r.review.law)}</div><div class="sum-key" style="margin-top:12px">필요 조치·소요기간</div><div class="block-val">${fmt(r.review.action)} / ${fmt(r.review.period)}</div></div>`:'<div class="review-form"><h3>진행 현황</h3><div class="right-review-note">아직 최종 회신이 등록되지 않았습니다. 검토 담당자가 처리 중입니다.</div></div>';return head+'</div>'}
+if(!isTeam){head+=r.review?`<div class="review-form"><h3>회신 결과</h3><div class="sum-key">회신 담당자 / 회신일</div><div class="block-val">${escape(r.assigned)} / ${escape(formatReplyDate(r.review.sentAt))}</div><div class="sum-key" style="margin-top:12px">검토 의견</div><div class="block-val">${fmt(r.review.result)}</div><div class="sum-key" style="margin-top:12px">적용 법령 및 근거</div><div class="block-val">${fmt(r.review.law)}</div><div class="sum-key" style="margin-top:12px">필요 조치·소요기간</div><div class="block-val">${fmt(r.review.action)} / ${fmt(r.review.period)}</div></div>`:'<div class="review-form"><h3>진행 현황</h3><div class="right-review-note">아직 최종 회신이 등록되지 않았습니다. 검토 담당자가 처리 중입니다.</div></div>';return head+'</div>'}
 let rev=r.review||{};head+=`<div class="review-form"><h3>담당자 지정 및 검토 회신</h3><div class="right-review-note">시안에서는 회신 완료를 눌러도 메일이 발송되지 않습니다. 실제 운영에서는 인증된 담당자만 발송하며 처리이력이 저장됩니다.</div>
 <div class="row2"><div class="field"><label for="assignee">검토 담당자 <span class="req">*</span></label><select class="input" id="assignee" ${r.status==='회신완료'?'disabled':''}><option value="">담당자 선택</option>${['인허가팀 담당자 A','인허가팀 담당자 B','인허가팀 담당자 C'].map(n=>`<option value="${escape(n)}" ${r.assigned===n?'selected':''}>${escape(n)}</option>`).join('')}</select></div><div class="field"><label>진행 상태</label><div class="block-val">${escape(r.status)}</div></div></div>
 <div class="field"><label for="review-result">검토 결과 <span class="req">*</span></label><textarea class="input" id="review-result" ${r.status==='회신완료'?'disabled':''} placeholder="법령 검토에 따른 결론과 조건을 작성하세요.">${escape(rev.result||'')}</textarea></div>
