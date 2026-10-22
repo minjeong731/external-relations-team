@@ -83,7 +83,8 @@
       <div class="demo-login-label"><label for="live-email-prefix">회사 이메일</label></div>
       <div class="email-fixed"><input type="text" required id="live-email-prefix" autocomplete="username" placeholder="계정 ID" maxlength="64"><span class="email-domain">@hdc-resort.com</span></div>
       <div class="demo-login-label"><label for="live-password">비밀번호</label></div>
-      <input type="password" class="input" required id="live-password" autocomplete="current-password" maxlength="200" placeholder="비밀번호" style="width:100%;margin-bottom:18px">
+      <input type="password" class="input" required id="live-password" aria-describedby="live-password-help" autocomplete="current-password" minlength="6" maxlength="200" placeholder="비밀번호 6자 이상" style="width:100%;margin-bottom:0">
+      <p id="live-password-help" style="font-size:12px;line-height:1.6;color:#566e80;margin:6px 0 18px"><strong>처음 로그인할 때 비밀번호를 6자 이상 설정하세요.</strong> 다음부터는 같은 비밀번호로 로그인하면 됩니다.</p>
       <button type="submit" class="demo-login-button primary" id="live-login-submit">로그인 →</button>
       <p id="live-login-error" class="req" role="alert" style="margin-top:12px"></p>
     </form>
