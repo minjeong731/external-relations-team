@@ -634,7 +634,7 @@ $('request-form').addEventListener('submit',async e=>{e.preventDefault();const f
   for(const file of files){try{await live.upload(created.id,file)}catch(err){failed.push(file.name+': '+err.message)}}
   $('request-form').reset();$('request-date').value=nowDate();updatePreview();
   await refreshRemote();setScreen('mine');
-  notice('['+created.id+'] 공용 저장 완료'+(failed.length?' · 첨부 오류: '+failed.join(', '):' · 첨부파일 저장 완료')+' · 실제 이메일 미발송');
+  notice('['+created.id+'] 공용 저장 완료'+(failed.length?' · 첨부 오류: '+failed.join(', '):' · 첨부파일 저장 완료')+mailOutcome(created,'request'));
  }catch(err){notice('공용 저장 실패: '+err.message)}
  finally{submitButton.disabled=false}
  return;
@@ -700,6 +700,12 @@ $('history-team-demo').addEventListener('click',()=>{historyMode='team';renderHi
 $('history-back-demo').addEventListener('click',()=>{$('history-detail-demo').hidden=true;$('history-detail').innerHTML='';});
 
 $('filters').addEventListener('click',e=>{let b=e.target.closest('[data-filter]');if(!b)return;filter=b.dataset.filter;teamPage=1;renderTeam()});
+function mailOutcome(ticket, kind){
+ const status=ticket.mailNotifications?.[kind];
+ if(status==='accepted')return ' · 메일 서버 발송 접수 완료';
+ if(status==='failed')return ' · 메일 발송 실패 (담당자에게 확인 요청)';
+ return ' · 이메일 연동 대기 (미발송)';
+}
 function formatReplyDate(value){
  if(!value)return '발송 전';
  const original=String(value).trim();
@@ -733,12 +739,12 @@ async function saveReview(r,send){
  if(send&&!rev.category){$('review-category').focus();notice('실적 분류를 위한 검토분야를 선택해 주세요.');return}
  if(send&&!rev.result){$('review-result').focus();notice('검토 결과를 입력해야 회신을 처리할 수 있습니다.');return}
  if(liveMode){
-  if(send&&!confirm('검토 결과를 공용 저장소에 확정할까요?\n※ 실제 이메일은 발송되지 않습니다.'))return;
+  if(send&&!confirm('검토 결과를 공용 저장소에 확정할까요?\n※ 회사 메일 발송 설정이 완료된 경우 요청자에게 결과가 자동 전송됩니다.'))return;
   try{
    const updated=await live.review(r.id,{...rev,complete:send});
    const index=requests.findIndex(x=>x.id===r.id);if(index>=0)requests[index]=updated;
    store();renderTeam();display(r.id,'team');
-   notice(send?'검토 결과가 확정·공유됐습니다. 실제 이메일은 미발송입니다.':'검토 초안이 공용 저장됐습니다.');
+   notice(send?'검토 결과가 확정·공유됐습니다.'+mailOutcome(updated,'reply'):'검토 초안이 공용 저장됐습니다.');
   }catch(err){notice('검토 저장 실패: '+err.message)}
   return;
  }
@@ -758,7 +764,7 @@ if(liveMode){
  $('screen-mine').querySelector('.subtitle').textContent='내가 접수한 요청과 회신 결과를 확인할 수 있습니다.';
  $('screen-mine').querySelector('.pill').textContent='내 요청 목록';
  $('screen-mine').querySelector('.notice').textContent='ⓘ 내 계정의 요청과 회신 내역은 PC 공동 저장소에서 조회됩니다.';
- $('screen-new').querySelector('.notice').textContent='ⓘ 요청과 첨부파일은 PC에 저장되지만 이메일은 자동 발송되지 않습니다. 가상 테스트 자료만 사용하세요.';
+ $('screen-new').querySelector('.notice').textContent='ⓘ 요청과 첨부파일은 PC에 저장됩니다. 회사 메일 연동 전에는 알림 메일이 발송되지 않습니다. 가상 테스트 자료만 사용하세요.';
  const uiHide=document.querySelectorAll('.preview-note,.sidebar-foot,#clear-demo');
  uiHide.forEach(el=>{el.hidden=true;el.style.display='none'});
  document.querySelectorAll('.notice').forEach(el=>{
