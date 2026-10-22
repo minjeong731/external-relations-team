@@ -77,8 +77,9 @@ class LanServerTests(unittest.TestCase):
             self.assertEqual(status, 200)
             self.assertTrue(created["created"])
             self.assertEqual(created["user"]["role"], "requester")
-            status, _ = post({"email": email, "password": "wrongpw"})
+            status, wrong = post({"email": email, "password": "wrongpw"})
             self.assertEqual(status, 401)  # Cannot reset another person's password.
+            self.assertIn("비밀번호가 일치하지 않습니다", wrong["error"])
             status, logged_in = post({"email": email, "password": "abcdef"})
             self.assertEqual(status, 200)
             self.assertFalse(logged_in["created"])
