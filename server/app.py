@@ -114,8 +114,8 @@ def boot():
         existing = db.execute("SELECT COUNT(*) FROM users").fetchone()[0]
         if not existing:
             password = os.environ.get("PERMIT_ADMIN_PASSWORD", "")
-            if not valid_email(admin_email) or len(password) < 12:
-                raise RuntimeError("First start: set PERMIT_ADMIN_EMAIL and PERMIT_ADMIN_PASSWORD (12+ chars).")
+            if not valid_email(admin_email) or len(password) < 6:
+                raise RuntimeError("First start: set PERMIT_ADMIN_EMAIL and PERMIT_ADMIN_PASSWORD (6+ chars).")
             db.execute("INSERT INTO users(email,passhash,role,created) VALUES(?,?,?,?)",
                        (admin_email, passhash(password), "admin", now()))
     logging.info("SQLite initialized at %s", DB_PATH)
@@ -310,8 +310,8 @@ class Handler(BaseHTTPRequestHandler):
                     email = field(body, "email", True, 120).lower()
                     password = field(body, "password", True, 200)
                     role = field(body, "role", True, 20)
-                    if not valid_email(email) or len(password) < 12 or role not in ("requester", "reviewer", "admin"):
-                        raise ValueError("회사 이메일, 12자 이상 비밀번호, 올바른 권한을 입력하세요.")
+                    if not valid_email(email) or len(password) < 6 or role not in ("requester", "reviewer", "admin"):
+                        raise ValueError("회사 이메일, 6자 이상 비밀번호, 올바른 권한을 입력하세요.")
                     try:
                         db.execute("INSERT INTO users(email,passhash,role,created) VALUES(?,?,?,?)",
                                    (email, passhash(password), role, now()))
