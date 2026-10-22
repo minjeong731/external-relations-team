@@ -93,7 +93,18 @@
   async function addUser(email,password,role){
     return request('/api/users','POST',{email,password,role});
   }
-  window.PERMIT_LIVE = {enabled,login,restore,logout,load,create,upload,download,review,addUser,
+  async function listUsers(){
+    return (await request('/api/users')).users;
+  }
+  async function resetUserPassword(id,adminPassword){
+    return request('/api/users/'+encodeURIComponent(id)+'/reset-password','POST',{adminPassword});
+  }
+  async function changeTemporaryPassword(newPassword){
+    const data=await request('/api/change-temporary-password','POST',{newPassword});
+    user=data.user;
+    return user;
+  }
+  window.PERMIT_LIVE = {enabled,login,restore,logout,load,create,upload,download,review,addUser,listUsers,resetUserPassword,changeTemporaryPassword,
     get user(){return user},
     get connected(){return !!user}
   };
