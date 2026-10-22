@@ -258,6 +258,43 @@ const live = window.PERMIT_LIVE;
 const liveMode = !!(live && live.enabled);
 const liveGate = document.getElementById('live-login-gate');
 let remoteRefreshPending = false;
+let adminUsersList = [];
+let resetAccount = null;
+const changeGate = document.getElementById('live-change-gate');
+function hideTemporaryResult(){
+ document.getElementById('live-reset-temp').value='';
+ document.getElementById('live-reset-result').hidden=true;
+}
+function renderAdminUsers(){
+ const root=document.getElementById('live-reset-users');
+ root.replaceChildren();
+ const q=document.getElementById('live-reset-search').value.trim().toLowerCase();
+ const matches=adminUsersList.filter(member=>member.role!=='admin'&&member.email.toLowerCase().includes(q));
+ if(!matches.length){root.textContent='검색된 직원 계정이 없습니다.';return}
+ for(const member of matches.slice(0,50)){
+  const row=document.createElement('div');
+  row.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #e4eaf0;flex-wrap:wrap';
+  const info=document.createElement('span');
+  info.style.overflowWrap='anywhere';
+  info.textContent=member.email+' · '+(member.role==='reviewer'?'인허가팀':'일반 직원')+(member.mustChangePassword?' · 비밀번호 변경 대기':'');
+  const button=document.createElement('button');
+  button.type='button';button.className='btn soft';button.textContent='비밀번호 초기화';
+  button.addEventListener('click',()=>{
+   resetAccount=member;
+   hideTemporaryResult();
+   document.getElementById('live-reset-target').textContent=member.email;
+   document.getElementById('live-reset-admin-password').value='';
+   document.getElementById('live-reset-form').hidden=false;
+   document.getElementById('live-reset-admin-password').focus();
+  });
+  row.append(info,button);root.appendChild(row);
+ }
+}
+async function refreshAdminUsers(){
+ if(!liveMode || !live.connected || live.user?.role!=='admin')return;
+ try{adminUsersList=await live.listUsers();renderAdminUsers()}
+ catch(err){notice('직원 계정 조회 실패: '+err.message)}
+}
 async function refreshRemote(){
  if(!liveMode || !live.connected || remoteRefreshPending)return;
  remoteRefreshPending=true;
@@ -272,12 +309,22 @@ async function refreshRemote(){
 }
 async function enterLiveMode(user){
  liveGate.hidden=true;
+ if(user.mustChangePassword){
+  changeGate.hidden=false;
+  document.getElementById('live-change-email').textContent=user.email;
+  document.getElementById('live-change-new').value='';
+  document.getElementById('live-change-confirm').value='';
+  document.getElementById('live-change-error').textContent='';
+  return;
+ }
+ changeGate.hidden=true;
  startDemo(user.role==='requester'?'requester':'reviewer');
  document.getElementById('demo-current-role').textContent=user.email+' · 공동 저장';
  const emailBox=document.getElementById('email');emailBox.value=user.email.split('@')[0];emailBox.readOnly=true;
  document.getElementById('live-admin-users').hidden=user.role!=='admin';
  requests=[];updateCounts();
  await refreshRemote();
+ if(user.role==='admin')await refreshAdminUsers();
 }
 
 const startDemo = role => {
@@ -297,7 +344,8 @@ document.getElementById('demo-reviewer-login').addEventListener('click', () => s
 document.getElementById('demo-logout').addEventListener('click', async () => {
   if(liveMode){
     await live.logout();demoRole=null;requests=[];updateCounts();
-    liveGate.hidden=false;document.getElementById('live-password').value='';
+    hideTemporaryResult();resetAccount=null;
+    changeGate.hidden=true;liveGate.hidden=false;document.getElementById('live-password').value='';
     return;
   }
   demoRole = null;
@@ -604,6 +652,7 @@ if(liveMode){
    await live.addUser(email,$('live-new-password').value,$('live-new-role').value);
    $('live-new-password').value='';$('live-new-email').value='';
    notice('계정이 등록됐습니다: '+email);
+   await refreshAdminUsers();
   }catch(err){notice('계정 등록 실패: '+err.message)}
   finally{button.disabled=false}
  });
