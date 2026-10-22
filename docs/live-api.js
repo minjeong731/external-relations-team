@@ -96,6 +96,9 @@
   async function listUsers(){
     return (await request('/api/users')).users;
   }
+  async function updateUserRole(id,role,adminPassword){
+    return request('/api/users/'+encodeURIComponent(id)+'/role','POST',{role,adminPassword});
+  }
   async function resetUserPassword(id,adminPassword){
     return request('/api/users/'+encodeURIComponent(id)+'/reset-password','POST',{adminPassword});
   }
@@ -104,7 +107,7 @@
     user=data.user;
     return user;
   }
-  window.PERMIT_LIVE = {enabled,login,restore,logout,load,create,upload,download,review,addUser,listUsers,resetUserPassword,changeTemporaryPassword,
+  window.PERMIT_LIVE = {enabled,login,restore,logout,load,create,upload,download,review,addUser,listUsers,updateUserRole,resetUserPassword,changeTemporaryPassword,
     get user(){return user},
     get connected(){return !!user}
   };
