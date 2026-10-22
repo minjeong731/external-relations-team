@@ -40,32 +40,40 @@ class TestSharedServer(unittest.TestCase):
   self.assertEqual(code,200);admin=a["token"]
   status,_=self.call("/api/users",{"email":"short@hdc-resort.com","password":"abcde","role":"requester"},admin)
   self.assertEqual(status,400)
-  for email,role in [("worker.a@hdc-resort.com","requester"),("worker.b@hdc-resort.com","requester"),("reviewer@hdc-resort.com","reviewer")]:
+  for email,role in [("worker.a@hdc-resort.com","requester"),("worker.b@hdc-resort.com","requester"),("reviewer@hdc-resort.com","reviewer"),("reviewer2@hdc-resort.com","reviewer")]:
    code,_=self.call("/api/users",{"email":email,"password":"qwerty","role":role},admin)
    self.assertEqual(code,201)
   def login(email):
    code,out=self.call("/api/login",{"email":email,"password":"qwerty"})
    self.assertEqual(code,200);return out["token"]
-  ta,tb,tr=login("worker.a@hdc-resort.com"),login("worker.b@hdc-resort.com"),login("reviewer@hdc-resort.com")
+  ta,tb,tr,tr2=login("worker.a@hdc-resort.com"),login("worker.b@hdc-resort.com"),login("reviewer@hdc-resort.com"),login("reviewer2@hdc-resort.com")
   form={"department":"시설팀","requester":"직원A","date":"2026-10-21","title":"건축물 변경","site":"A현장","category":"건축","question":"검토요청","current":"현황","purpose":"사유"}
   code,res=self.call("/api/tickets",form,ta);self.assertEqual(code,201)
   tid=res["ticket"]["id"]
+  self.assertEqual(res["ticket"]["category"],"")
+  self.assertEqual(res["ticket"]["assigned"],"")
   self.assertEqual(res["ticket"]["email"],"worker.a@hdc-resort.com")
   code,res=self.call("/api/tickets",token=tb);self.assertEqual(code,200);self.assertFalse(res["tickets"])
   code,res=self.call("/api/tickets",token=tr);self.assertEqual(code,200);self.assertEqual(res["tickets"][0]["id"],tid)
   code,_=self.call("/api/tickets/"+tid,token=tb);self.assertEqual(code,404)
-  code,_=self.call("/api/tickets/"+tid+"/review",{"assigned":"검토자","result":"승인","complete":True},ta);self.assertEqual(code,403)
+  code,_=self.call("/api/tickets/"+tid+"/review",{"category":"기타","result":"승인","complete":True},ta);self.assertEqual(code,403)
   photo=b"\x89PNG\r\n\x1a\n"+b"\0"*30
   code,res=self.call("/api/tickets/"+tid+"/attachments",{"name":"drawing.png","data":base64.b64encode(photo).decode()},ta)
   self.assertEqual(code,201)
   aid=res["ticket"]["attachments"][0]["id"]
   code,got=self.call("/api/tickets/"+tid+"/attachments/"+str(aid),token=tr);self.assertEqual(code,200);self.assertEqual(got,photo)
   code,_=self.call("/api/tickets/"+tid+"/attachments/"+str(aid),token=tb);self.assertEqual(code,404)
-  code,out=self.call("/api/tickets/"+tid+"/review",{"assigned":"팀원","result":"검토 중","law":"","action":"","period":"","complete":False},tr)
+  code,out=self.call("/api/tickets/"+tid+"/review",{"result":"검토 중","law":"","action":"","period":"","complete":False},tr)
   self.assertEqual(code,200);self.assertEqual(out["ticket"]["status"],"검토중")
-  code,out=self.call("/api/tickets/"+tid+"/review",{"assigned":"팀원","result":"검토 완료","law":"법령","action":"","period":"","complete":True},tr)
+  code,invalid=self.call("/api/tickets/"+tid+"/review",{"result":"검토 완료","complete":True},tr2)
+  self.assertEqual(code,400);self.assertIn("검토분야",invalid["error"])
+  code,invalid=self.call("/api/tickets/"+tid+"/review",{"category":"잘못된 분류","result":"검토 완료","complete":True},tr2)
+  self.assertEqual(code,400)
+  code,out=self.call("/api/tickets/"+tid+"/review",{"category":"건축·설계변경","result":"검토 완료","law":"법령","action":"","period":"","complete":True},tr2)
   self.assertEqual(code,200);self.assertEqual(out["ticket"]["status"],"회신완료")
-  code,_=self.call("/api/tickets/"+tid+"/review",{"assigned":"팀원","result":"덮어쓰기","complete":True},tr);self.assertEqual(code,409)
+  self.assertEqual(out["ticket"]["category"],"건축·설계변경")
+  self.assertEqual(out["ticket"]["assigned"],"reviewer2@hdc-resort.com")
+  code,_=self.call("/api/tickets/"+tid+"/review",{"category":"기타","result":"덮어쓰기","complete":True},tr);self.assertEqual(code,409)
   code,out=self.call("/api/tickets/"+tid,token=ta);self.assertEqual(code,200);self.assertEqual(out["ticket"]["review"]["result"],"검토 완료")
   code,out=self.call("/api/audit",token=tr);self.assertEqual(code,200);self.assertTrue(any(e["action"]=="회신확정" for e in out["changes"]))
   code,_=self.call("/api/audit",token=ta);self.assertEqual(code,403)
