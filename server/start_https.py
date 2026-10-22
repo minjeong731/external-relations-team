@@ -115,7 +115,10 @@ def main():
         print("=" * 58 + "\n")
         webbrowser.open("http://127.0.0.1:" + str(app.PORT))
         try:
-            server.serve_forever()
+            # The HTTP loop already runs in the worker thread.
+            # Keep this main thread alive and responsive to Ctrl+C.
+            while thread.is_alive():
+                thread.join(timeout=1)
         except KeyboardInterrupt:
             pass
         return 0
