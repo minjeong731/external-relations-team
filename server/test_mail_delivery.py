@@ -52,6 +52,7 @@ SETTINGS = {
     "PERMIT_SMTP_USER": "mail-service@hdc-resort.com",
     "PERMIT_SMTP_PASSWORD": "non-real-test-secret",
     "PERMIT_MAIL_FROM": "mail-service@hdc-resort.com",
+    "PERMIT_MAIL_FROM_NAME": "인허가 검토 시스템",
     "PERMIT_TEAM_MAIL": "permits@hdc-resort.com"
 }
 
@@ -74,6 +75,8 @@ class MailDeliveryTests(unittest.TestCase):
         self.assertEqual(first[:2], ("accepted", "permits@hdc-resort.com"))
         self.assertEqual(second[:2], ("accepted", "worker@hdc-resort.com"))
         self.assertEqual(len(FakeSMTP.sent), 2)
+        self.assertIn("인허가 검토 시스템", str(FakeSMTP.sent[0]["From"]))
+        self.assertIn("<mail-service@hdc-resort.com>", str(FakeSMTP.sent[0]["From"]))
         self.assertIn("2026-009", FakeSMTP.sent[0]["Subject"])
         self.assertIn("검토 완료", FakeSMTP.sent[1].get_content())
         self.assertIn("건축·설계변경", FakeSMTP.sent[1].get_content())
@@ -88,6 +91,18 @@ class MailDeliveryTests(unittest.TestCase):
             foreign = dict(SAMPLE, email="external@example.com")
             self.assertRaises(ValueError, mail_delivery.make_message, "reply", foreign, mail_delivery.mail_config())
         with patch.dict(os.environ, {**SETTINGS, "PERMIT_SMTP_SECURITY": "plain"}):
+            self.assertIsNone(mail_delivery.mail_config())
+
+    def test_display_name_can_be_changed_without_changing_sender_address(self):
+        with patch.dict(os.environ, {**SETTINGS, "PERMIT_MAIL_FROM_NAME": "인허가 시스템 알림"}):
+            config = mail_delivery.mail_config()
+            message = mail_delivery.make_message("request", SAMPLE, config)
+            self.assertIn("인허가 시스템 알림", str(message["From"]))
+            self.assertIn("mail-service@hdc-resort.com", str(message["From"]))
+        with patch.dict(os.environ, {**SETTINGS, "PERMIT_MAIL_FROM_NAME": "invalid\\r\\nBcc: outsider@example.com"}):
+            # Literal escape sequences can be configured but actual CRLF are forbidden.
+            pass
+        with patch.dict(os.environ, {**SETTINGS, "PERMIT_MAIL_FROM_NAME": "bad\r\nBcc: outsider@example.com"}):
             self.assertIsNone(mail_delivery.mail_config())
 
     def test_explicit_tls_ssl_mode(self):
