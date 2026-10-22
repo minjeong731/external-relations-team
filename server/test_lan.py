@@ -55,6 +55,87 @@ class LanServerTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(json.loads(health)["storage"], "server")
 
+    def test_admin_reset_and_forced_password_change_preserves_requests(self):
+        import urllib.error
+        def req(path, body=None, token=None):
+            headers = {"Origin": self.base}
+            if token: headers["Authorization"] = "Bearer " + token
+            if body is not None: headers["Content-Type"] = "application/json"
+            request = Request(self.base + path,
+                              json.dumps(body).encode() if body is not None else None,
+                              headers=headers)
+            try:
+                with urlopen(request, timeout=6) as response:
+                    return response.status, json.loads(response.read())
+            except urllib.error.HTTPError as err:
+                return err.code, json.loads(err.read())
+        code, admin_login = req("/api/login", {"email":"minjeong.kang@hdc-resort.com", "password":"abcdef"})
+        self.assertEqual(code, 200)
+        admin = admin_login["token"]
+        staff_email = "reset-test-employee@hdc-resort.com"
+        code, _ = req("/api/users", {"email":staff_email,"password":"original123","role":"requester"}, admin)
+        self.assertEqual(code, 201)
+        code, staff_login = req("/api/login", {"email":staff_email,"password":"original123"})
+        self.assertEqual(code, 200)
+        staff_token = staff_login["token"]
+        owner_id = staff_login["user"]["id"]
+        ticket_body = {"department":"시험팀","requester":"테스트직원","date":"2026-10-22",
+                       "title":"초기화 후에도 남아야 할 요청","site":"가상 현장","category":"건축",
+                       "question":"가상 질문","current":"가상 현황","purpose":"테스트"}
+        code, made = req("/api/tickets", ticket_body, staff_token)
+        self.assertEqual(code, 201)
+        ticket_id = made["ticket"]["id"]
+        code, _ = req("/api/users",token=staff_token)
+        self.assertEqual(code, 403)
+        code, allusers = req("/api/users",token=admin)
+        self.assertEqual(code, 200)
+        target = next(x for x in allusers["users"] if x["email"]==staff_email)
+        self.assertEqual(target["id"],owner_id)
+        reset_route = "/api/users/" + str(owner_id) + "/reset-password"
+        code, _ = req(reset_route, {"adminPassword":"abcdef"},staff_token)
+        self.assertEqual(code, 403)
+        code, _ = req(reset_route, {"adminPassword":"incorrect"},admin)
+        self.assertEqual(code, 403)
+        code, _ = req("/api/users/"+str(admin_login["user"]["id"])+"/reset-password",
+                      {"adminPassword":"abcdef"},admin)
+        self.assertEqual(code, 403)
+        code, reset = req(reset_route, {"adminPassword":"abcdef"},admin)
+        self.assertEqual(code, 200)
+        self.assertEqual(reset["email"],staff_email)
+        self.assertGreaterEqual(len(reset["temporaryPassword"]), 12)
+        self.assertTrue(reset["mustChangePassword"])
+        temporary = reset["temporaryPassword"]
+        code, _ = req("/api/tickets",token=staff_token)
+        self.assertEqual(code, 401)  # Original session revoked.
+        code, _ = req("/api/login", {"email":staff_email,"password":"original123"})
+        self.assertEqual(code, 401)
+        code, temporary_login = req("/api/login", {"email":staff_email,"password":temporary})
+        self.assertEqual(code, 200)
+        self.assertTrue(temporary_login["user"]["mustChangePassword"])
+        new_session = temporary_login["token"]
+        code, _ = req("/api/tickets",token=new_session)
+        self.assertEqual(code, 403)  # Must choose own password before viewing data.
+        code, _ = req("/api/change-temporary-password",{"newPassword":"abc"},new_session)
+        self.assertEqual(code, 400)
+        code, _ = req("/api/change-temporary-password",{"newPassword":temporary},new_session)
+        self.assertEqual(code, 400)
+        code, changed = req("/api/change-temporary-password",
+                            {"newPassword":"myNewPassword123"},new_session)
+        self.assertEqual(code, 200)
+        self.assertFalse(changed["user"]["mustChangePassword"])
+        code, tickets = req("/api/tickets",token=new_session)
+        self.assertEqual(code, 200)
+        self.assertTrue(any(t["id"]==ticket_id for t in tickets["tickets"]))
+        code, _ = req("/api/login",{"email":staff_email,"password":temporary})
+        self.assertEqual(code, 401)
+        code, new_login = req("/api/login",{"email":staff_email,"password":"myNewPassword123"})
+        self.assertEqual(code, 200)
+        self.assertFalse(new_login["user"]["mustChangePassword"])
+        with app.connection() as db:
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM users WHERE email=?",(staff_email,)).fetchone()[0],1)
+            self.assertGreaterEqual(db.execute("SELECT COUNT(*) FROM security_events WHERE target_id=?",(owner_id,)).fetchone()[0],2)
+            self.assertEqual(db.execute("SELECT owner_id FROM tickets WHERE id=?",(ticket_id,)).fetchone()[0],owner_id)
+
     def test_first_login_auto_creates_requester_only(self):
         import urllib.error
         email = "staff.firstlogin@hdc-resort.com"
