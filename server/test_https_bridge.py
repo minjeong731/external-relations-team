@@ -29,7 +29,7 @@ class HttpsBridgeTests(unittest.TestCase):
         self.assertIn('window.PERMIT_API_BASE = ""', config)
         self.assertIn("window.location.search",config)
         self.assertIn("ts\\\\.net",config)
-        self.assertIn("parsed.protocol === \\"https:\\"",config)
+        self.assertIn('parsed.protocol === "https:"',config)
         self.assertIn("window.PERMIT_API_BASE",client)
         self.assertIn("fetch(path(endpoint)",client)
 
