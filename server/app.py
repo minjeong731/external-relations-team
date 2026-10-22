@@ -20,6 +20,7 @@ import sqlite3
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit
+from mail_delivery import send_event
 
 BASE = Path(os.environ.get("PERMIT_DATA_DIR", str(Path.home() / ".hdc-permit-data"))).resolve()
 DB_PATH = BASE / "permit.sqlite3"
@@ -114,6 +115,13 @@ def boot():
           id INTEGER PRIMARY KEY, actor_id INTEGER NOT NULL, target_id INTEGER NOT NULL,
           action TEXT NOT NULL, occurred TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS mail_events (
+          ticket_id TEXT NOT NULL REFERENCES tickets(id),
+          event TEXT NOT NULL CHECK(event IN ('request','reply')),
+          recipient TEXT NOT NULL DEFAULT '', status TEXT NOT NULL,
+          attempted_at TEXT NOT NULL, failure_code TEXT NOT NULL DEFAULT '',
+          PRIMARY KEY(ticket_id,event)
+        );
         CREATE INDEX IF NOT EXISTS idx_tickets_owner ON tickets(owner_id);
         CREATE INDEX IF NOT EXISTS idx_attach_ticket ON attachments(ticket_id,id);
         """)
@@ -145,7 +153,29 @@ def ticket_for(db, r):
                      (r["id"],)).fetchone()
     d["review"] = ({"result": rev["result"], "law": rev["law"], "action": rev["action"],
                     "period": rev["period"], "sentAt": rev["sent_at"]} if rev else None)
+    d["mailNotifications"] = {
+        x["event"]: x["status"] for x in db.execute(
+            "SELECT event,status FROM mail_events WHERE ticket_id=?", (r["id"],))
+    }
     return d
+
+def notify_and_log(db, ticket_id, event):
+    """Notification failure never undoes a successfully stored request or reply."""
+    previous = db.execute(
+        "SELECT status FROM mail_events WHERE ticket_id=? AND event=?",
+        (ticket_id, event)).fetchone()
+    if previous and previous["status"] == "accepted":
+        return
+    ticket = db.execute("SELECT * FROM tickets WHERE id=?", (ticket_id,)).fetchone()
+    status, recipient, failure = send_event(event, ticket_for(db, ticket))
+    db.execute("""INSERT INTO mail_events(ticket_id,event,recipient,status,attempted_at,failure_code)
+                  VALUES(?,?,?,?,?,?)
+                  ON CONFLICT(ticket_id,event) DO UPDATE SET
+                  recipient=excluded.recipient,status=excluded.status,
+                  attempted_at=excluded.attempted_at,failure_code=excluded.failure_code""",
+               (ticket_id, event, recipient, status, now(), failure))
+    db.commit()
+
 
 def audit(db, ticket_id, who, action):
     db.execute("INSERT INTO audit(ticket_id,actor_id,action,occurred) VALUES(?,?,?,?)",
@@ -516,6 +546,7 @@ class Handler(BaseHTTPRequestHandler):
                     vals["question"],vals["current"],vals["purpose"],now()))
         audit(db, ticket_id, who, "요청접수")
         db.commit()
+        notify_and_log(db, ticket_id, "request")
         row = db.execute("SELECT * FROM tickets WHERE id=?", (ticket_id,)).fetchone()
         return self.json_response(201, {"ticket": ticket_for(db, row)})
 
@@ -585,6 +616,8 @@ class Handler(BaseHTTPRequestHandler):
                     "회신완료" if completed else "검토중",ticket_id))
         audit(db,ticket_id,who,"회신확정" if completed else "검토수정")
         db.commit()
+        if completed:
+            notify_and_log(db, ticket_id, "reply")
         row = db.execute("SELECT * FROM tickets WHERE id=?", (ticket_id,)).fetchone()
         return self.json_response(200, {"ticket": ticket_for(db,row)})
 
