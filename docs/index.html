@@ -656,6 +656,56 @@ if(liveMode){
   }catch(err){notice('계정 등록 실패: '+err.message)}
   finally{button.disabled=false}
  });
+ document.getElementById('live-reset-search').addEventListener('input',renderAdminUsers);
+ document.getElementById('live-reset-cancel').addEventListener('click',()=>{
+  resetAccount=null;
+  $('live-reset-form').hidden=true;
+  $('live-reset-admin-password').value='';
+ });
+ document.getElementById('live-reset-done').addEventListener('click',hideTemporaryResult);
+ document.getElementById('live-reset-temp').addEventListener('focus',e=>e.target.select());
+ document.getElementById('live-reset-temp').addEventListener('click',e=>e.target.select());
+ document.getElementById('live-reset-form').addEventListener('submit',async e=>{
+  e.preventDefault();
+  if(!resetAccount)return;
+  const target=resetAccount;
+  const button=$('live-reset-submit');
+  if(!confirm(target.email+' 직원의 비밀번호를 초기화할까요? 기존 로그인은 해제되고, 접수 및 회신 기록은 유지됩니다.'))return;
+  button.disabled=true;
+  try{
+   const result=await live.resetUserPassword(target.id,$('live-reset-admin-password').value);
+   $('live-reset-admin-password').value='';
+   $('live-reset-form').hidden=true;
+   $('live-reset-result-email').textContent=result.email;
+   $('live-reset-temp').value=result.temporaryPassword;
+   $('live-reset-result').hidden=false;
+   $('live-reset-temp').focus();
+   resetAccount=null;
+   await refreshAdminUsers();
+   notice('비밀번호가 초기화됐습니다. 임시 비밀번호를 직원에게 전달하세요.');
+  }catch(err){notice('초기화 실패: '+err.message)}
+  finally{button.disabled=false;$('live-reset-admin-password').value=''}
+ });
+ document.getElementById('live-change-form').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const next=$('live-change-new').value;
+  if(next.length<6){$('live-change-error').textContent='새 비밀번호는 6자 이상 입력하세요.';return}
+  if(next!==$('live-change-confirm').value){$('live-change-error').textContent='새 비밀번호 확인이 일치하지 않습니다.';return}
+  const button=$('live-change-submit');button.disabled=true;$('live-change-error').textContent='';
+  try{
+   const changed=await live.changeTemporaryPassword(next);
+   $('live-change-new').value='';$('live-change-confirm').value='';
+   await enterLiveMode(changed);
+   notice('새 비밀번호가 설정됐습니다.');
+  }catch(err){$('live-change-error').textContent=err.message}
+  finally{button.disabled=false}
+ });
+ document.getElementById('live-change-logout').addEventListener('click',async()=>{
+  await live.logout();
+  changeGate.hidden=true;demoRole=null;
+  $('live-change-new').value='';$('live-change-confirm').value='';
+  $('live-password').value='';liveGate.hidden=false;
+ });
  void live.restore().then(user=>{if(user)return enterLiveMode(user)})
   .catch(err=>{console.warn(err)});
 }
