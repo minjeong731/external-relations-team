@@ -552,6 +552,9 @@ class Handler(BaseHTTPRequestHandler):
     def review(self, db, who, ticket_id, b):
         if who["role"] not in ("admin","reviewer"):
             return self.json_response(403, {"error": "검토자 권한이 필요합니다."})
+        # Multiple team members can reply. Serialize review updates so an
+        # older open draft cannot overwrite a reply another member just finalized.
+        db.execute("BEGIN IMMEDIATE")
         row = self.permitted_ticket(db, who, ticket_id)
         if not row:
             return self.json_response(404, {"error": "요청을 찾을 수 없습니다."})
