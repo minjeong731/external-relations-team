@@ -600,7 +600,7 @@ function yearsDemo(selectId) {
  requests.forEach(r=>{const year=recordYear(r);if(year)years.add(year)});
  const values=[...years].sort((a,b)=>Number(b)-Number(a));
  el.innerHTML='<option value="all">전체 연도</option>'+
-  values.map(y=>'<option value="'+escape(y)+'">'+escape(y)+'년도</option>').join('');
+  values.map(y=>'<option value="'+escape(y)+'">'+escape(y)+'년</option>').join('');
  el.value=values.includes(chosen)?chosen:'all';
 }
 function archiveFilteredDemo(){
