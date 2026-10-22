@@ -70,6 +70,23 @@ class LanServerTests(unittest.TestCase):
         self.assertIn("live.updateUserRole(target.id,destination", html)
 
 
+    def test_github_pages_cors_to_hosted_api(self):
+        # GitHub Pages stays on its original URL; authenticated API requests
+        # travel through a separate HTTPS tunnel that forwards to this server.
+        origin = "https://minjeong731.github.io"
+        req = Request(self.base + "/api/health", headers={"Origin": origin})
+        with urlopen(req, timeout=5) as response:
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.headers.get("Access-Control-Allow-Origin"), origin)
+        preflight = Request(
+            self.base + "/api/login", method="OPTIONS",
+            headers={"Origin": origin, "Access-Control-Request-Method": "POST",
+                     "Access-Control-Request-Headers": "Authorization, Content-Type"})
+        with urlopen(preflight, timeout=5) as response:
+            self.assertEqual(response.status, 204)
+            self.assertEqual(response.headers.get("Access-Control-Allow-Origin"), origin)
+            self.assertIn("Authorization", response.headers.get("Access-Control-Allow-Headers", ""))
+
     def test_same_origin_web_and_runtime_config(self):
         status, html = self.get("/")
         self.assertEqual(status, 200)
