@@ -28,7 +28,7 @@ class HttpsBridgeTests(unittest.TestCase):
         client=(ROOT/"docs"/"live-api.js").read_text(encoding="utf-8")
         self.assertIn('window.PERMIT_API_BASE = ""', config)
         self.assertIn("window.location.search",config)
-        self.assertIn("ts\\\\.net",config)
+        self.assertIn(r"ts\.net",config)
         self.assertIn('parsed.protocol === "https:"',config)
         self.assertIn("window.PERMIT_API_BASE",client)
         self.assertIn("fetch(path(endpoint)",client)
