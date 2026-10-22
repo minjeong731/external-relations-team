@@ -130,13 +130,14 @@
  <button class="nav-btn" data-screen="team"><span class="nav-icon">▦</span>인허가팀 검토함 <span class="nav-count" id="team-count">0</span></button>
  <button class="nav-btn" data-screen="archive"><span class="nav-icon">▤</span>전체 문의 · 답변 이력</button>
  <button class="nav-btn" data-screen="history"><span class="nav-icon">▧</span>변경이력</button>
+ <button class="nav-btn" data-screen="admin" id="admin-menu" hidden style="display:none"><span class="nav-icon">⚙</span>관리자 설정</button>
  <div class="nav-label">운영 안내</div>
  <div style="padding:0 13px;color:#adbfcc;font-size:11.5px;line-height:1.95">접수 → 담당자 지정 → 검토 → 회신<br/>메일 발송은 서버 연결 후 활성화</div>
  <div class="sidebar-foot"><span class="demo-chip">INTERACTIVE DEMO</span><strong>화면 시안 · 실제 메일 미발송</strong>이 브라우저 탭에서만 접수·검토 흐름을 체험합니다. 실제 회사 자료는 입력하지 마세요.</div>
 </aside>
 <div class="main">
 <header class="topbar"><div class="breadcrumb">업무시스템&nbsp; / &nbsp;<strong id="bread-current" style="color:#3b5265">인허가 검토 요청</strong></div><div class="topright"><span id="demo-current-role">웹 시연</span><button type="button" id="demo-logout" class="btn">로그아웃</button><div class="avatar">P</div></div></header>
-<div class="mobile-top"><button data-screen="new">새 요청</button><button data-screen="mine">내 요청</button><button data-screen="team">팀 검토함</button><button data-screen="archive">전체 문의·답변</button><button data-screen="history">변경이력</button></div>
+<div class="mobile-top"><button data-screen="new">새 요청</button><button data-screen="mine">내 요청</button><button data-screen="team">팀 검토함</button><button data-screen="archive">전체 문의·답변</button><button data-screen="history">변경이력</button><button data-screen="admin" id="admin-mobile-menu" hidden style="display:none">관리자 설정</button></div>
 <main class="content">
 <section id="screen-new">
  <div class="topline"><div><div class="eyebrow">PERMIT REVIEW REQUEST</div><h1 class="page-title">인허가 검토 요청</h1><p class="subtitle">변경사항과 검토가 필요한 내용을 입력하면 인허가팀에 전달됩니다.</p></div><span class="pill">신규 요청</span></div>
@@ -190,7 +191,11 @@
  <div class="tabs" id="filters"><button class="filter-btn active" data-filter="전체">전체</button><button class="filter-btn" data-filter="접수">접수</button><button class="filter-btn" data-filter="검토중">검토중</button><button class="filter-btn" data-filter="회신완료">회신완료</button></div>
  <div class="field" style="max-width:420px;margin-top:15px"><label for="team-search-demo">제목·접수번호 검색</label><input id="team-search-demo" class="input" placeholder="검색어 입력"></div><div class="panel list-panel"><div class="list-head"><div class="panel-title">팀 접수 목록 (5건씩)</div><div class="help">목록 항목의 “열기”를 선택하세요.</div></div><div class="items" id="team-list"></div><div id="team-pager" class="demo-pager"></div></div><div id="team-detail"></div>
  <div style="text-align:right;margin-top:18px"><button class="btn ghost danger" id="clear-demo">시연 접수 데이터 모두 삭제</button></div>
- <div id="live-admin-users" class="panel" hidden style="margin-top:24px"><div class="panel-head"><div class="panel-title">인허가팀 계정 등록 · 관리자 전용</div></div>
+
+</section>
+<section id="screen-admin" hidden>
+ <div class="topline"><div><div class="eyebrow">ADMINISTRATION</div><h1 class="page-title">관리자 설정</h1><p class="subtitle">인허가팀 계정 등록 및 직원 비밀번호 초기화를 관리합니다.</p></div><span class="pill">관리자 전용</span></div>
+ <div id="live-admin-users" class="panel"><div class="panel-head"><div class="panel-title">인허가팀 계정 등록 · 관리자 전용</div></div>
   <div class="panel-body"><form id="live-admin-form">
    <div class="row2"><div class="field"><label for="live-new-email">직원 이메일 ID</label><div class="email-fixed"><input id="live-new-email" required maxlength="64" placeholder="hong.gildong"><span class="email-domain">@hdc-resort.com</span></div></div>
    <div class="field"><label for="live-new-role">계정 권한</label><select class="input" id="live-new-role"><option value="reviewer">인허가팀</option><option value="requester">일반 직원 (관리자 대신 등록 시)</option></select></div></div>
@@ -215,6 +220,7 @@
    </div>
   </div>
  </div>
+
 </section>
 
 <section id="screen-archive" hidden>
@@ -321,7 +327,6 @@ async function enterLiveMode(user){
  startDemo(user.role==='requester'?'requester':'reviewer');
  document.getElementById('demo-current-role').textContent=user.email+' · 공동 저장';
  const emailBox=document.getElementById('email');emailBox.value=user.email.split('@')[0];emailBox.readOnly=true;
- document.getElementById('live-admin-users').hidden=user.role!=='admin';
  requests=[];updateCounts();
  await refreshRemote();
  if(user.role==='admin')await refreshAdminUsers();
@@ -332,10 +337,13 @@ const startDemo = role => {
   loginGate.hidden = true;
   document.getElementById('demo-current-role').textContent = role === 'reviewer' ? '인허가팀 · 시연' : '일반 직원 · 시연';
   document.querySelectorAll('[data-screen]').forEach(button => {
-    button.hidden = role === 'requester' ? ['team','archive','history'].includes(button.dataset.screen) : !['team','archive','history'].includes(button.dataset.screen);
-    if(role === 'reviewer' && ['team','archive','history'].includes(button.dataset.screen)) button.hidden=false;
-    if(role === 'requester' && ['team','archive','history'].includes(button.dataset.screen)) button.hidden=true;
-    if(button.hidden)button.style.display = 'none'; else button.style.removeProperty('display');
+    const screen = button.dataset.screen;
+    const isAdmin = liveMode && live.connected && live.user?.role === 'admin';
+    const visible = role === 'requester'
+      ? !['team','archive','history','admin'].includes(screen)
+      : ['team','archive','history'].includes(screen) || (screen === 'admin' && isAdmin);
+    button.hidden = !visible;
+    button.style.display = visible ? '' : 'none';
   });
   setScreen(role === 'reviewer' ? 'team' : 'new');
 };
@@ -363,7 +371,24 @@ $('request-date').value=nowDate();const escape=(s)=>String(s??'').replace(/[&<>"
 function notice(s){const t=$('toast');t.textContent=s;t.classList.add('show');clearTimeout(notice.t);notice.t=setTimeout(()=>t.classList.remove('show'),3600)}
 function store(){if(liveMode){updateCounts();return;}try{sessionStorage.setItem(STORAGE,JSON.stringify(requests))}catch{notice('이 브라우저에서는 임시 저장이 제한될 수 있습니다.')}updateCounts()}
 function updateCounts(){$('mine-count').textContent=requests.length;$('team-count').textContent=requests.filter(r=>r.status!=='회신완료').length}
-function setScreen(v){if(demoRole==='requester'&&['team','archive','history'].includes(v))return;if(demoRole==='reviewer'&&!['team','archive','history'].includes(v))return;active=v;['new','mine','team','archive','history'].forEach(x=>{$('screen-'+x).hidden=x!==v;document.querySelectorAll('[data-screen="'+x+'"]').forEach(b=>b.classList.toggle('active',x===v))});$('bread-current').textContent=({new:'인허가 검토 요청',mine:'내 요청 현황',team:'인허가팀 검토함',archive:'전체 문의 · 답변 이력',history:'변경이력'})[v];if(v==='mine')renderMine();if(v==='team')renderTeam();if(v==='archive')renderArchiveDemo();if(v==='history')renderHistoryDemo();if(liveMode&&live.connected)void refreshRemote();window.scrollTo({top:0,behavior:'instant'})}
+function setScreen(v){
+ if(demoRole==='requester'&&['team','archive','history','admin'].includes(v))return;
+ if(demoRole==='reviewer'&&!['team','archive','history','admin'].includes(v))return;
+ if(v==='admin'&&!(liveMode&&live.connected&&live.user?.role==='admin'))return;
+ active=v;
+ ['new','mine','team','archive','history','admin'].forEach(x=>{
+  $('screen-'+x).hidden=x!==v;
+  document.querySelectorAll('[data-screen="'+x+'"]').forEach(b=>b.classList.toggle('active',x===v));
+ });
+ $('bread-current').textContent=({new:'인허가 검토 요청',mine:'내 요청 현황',team:'인허가팀 검토함',archive:'전체 문의 · 답변 이력',history:'변경이력',admin:'관리자 설정'})[v];
+ if(v==='mine')renderMine();
+ if(v==='team')renderTeam();
+ if(v==='archive')renderArchiveDemo();
+ if(v==='history')renderHistoryDemo();
+ if(v==='admin'&&liveMode&&live.connected)void refreshAdminUsers();
+ if(v!=='admin'&&liveMode&&live.connected)void refreshRemote();
+ window.scrollTo({top:0,behavior:'instant'});
+}
 document.querySelectorAll('[data-screen]').forEach(b=>b.addEventListener('click',()=>setScreen(b.dataset.screen)));
 
 const demoAttachmentMemory = new Map();
