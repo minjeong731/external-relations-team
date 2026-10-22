@@ -40,6 +40,17 @@ class LanServerTests(unittest.TestCase):
         with urlopen(self.base + path, timeout=5) as response:
             return response.status, response.read().decode()
 
+    def test_requester_dashboard_shows_mine_above_new_form(self):
+        status, html = self.get("/")
+        self.assertEqual(status, 200)
+        self.assertIn("role === 'reviewer' ? 'team' : (liveMode ? 'mine' : 'new')", html)
+        self.assertIn("form.parentNode.insertBefore(mine,form)", html)
+        self.assertIn("staffDashboard?!['mine','new'].includes(x):x!==v", html)
+        self.assertIn("v==='new')$('screen-new').scrollIntoView", html)
+        self.assertIn("내 계정의 요청과 회신 내역은 PC 공동 저장소에서 조회됩니다.", html)
+        self.assertIn("가상 테스트 자료만 사용하세요.", html)
+        self.assertIn("if(v==='mine'||staffDashboard)renderMine()", html)
+
     def test_admin_settings_are_separate_from_review_inbox(self):
         status, html = self.get("/")
         self.assertEqual(status, 200)
