@@ -87,7 +87,7 @@ class LanServerTests(unittest.TestCase):
                 count = db.execute("SELECT COUNT(*) FROM users WHERE email=?", (email,)).fetchone()[0]
             self.assertEqual(count, 1)
             status, _ = post({"email": "staff.other@hdc-resort.com", "password": "abcdef"}, "/api/signup")
-            self.assertEqual(status, 404)  # No separate signup route anymore.
+            self.assertEqual(status, 401)  # No anonymous signup endpoint; authentication is required.
         finally:
             os.environ.pop("PERMIT_ENABLE_TEST_AUTO_ACCOUNT", None)
 
