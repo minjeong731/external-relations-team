@@ -53,6 +53,9 @@ def prepare_first_admin():
 def main():
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
+    # Local-network test only: employees create their own requester accounts.
+    # No mailbox verification, so this must never be used for actual business records.
+    os.environ["PERMIT_ENABLE_TEST_SELF_SIGNUP"] = "1"
     prepare_first_admin()
     try:
         app.boot()
