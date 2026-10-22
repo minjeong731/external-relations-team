@@ -277,12 +277,57 @@ const liveGate = document.getElementById('live-login-gate');
 let remoteRefreshPending = false;
 let adminUsersList = [];
 let resetAccount = null;
+let roleChangeAccount = null;
+let roleChangeTo = null;
 const changeGate = document.getElementById('live-change-gate');
 function hideTemporaryResult(){
  document.getElementById('live-reset-temp').value='';
  document.getElementById('live-reset-result').hidden=true;
 }
+function renderRoleAccounts(){
+ const root=$('live-accounts-list');
+ root.replaceChildren();
+ const search=$('live-accounts-search').value.trim().toLowerCase();
+ const roleFilter=$('live-accounts-role-filter').value;
+ const matches=adminUsersList.filter(m=>m.email.toLowerCase().includes(search)&&(roleFilter==='all'||m.role===roleFilter));
+ const summary=$('live-accounts-summary');
+ summary.textContent='등록 계정 '+adminUsersList.length+'명 · 일반 직원 '+adminUsersList.filter(m=>m.role==='requester').length+
+   '명 · 인허가팀 '+adminUsersList.filter(m=>m.role==='reviewer').length+'명'+
+   (matches.length!==adminUsersList.length?' · 현재 검색 '+matches.length+'명':'');
+ if(!matches.length){root.textContent='조건에 맞는 등록 계정이 없습니다.';return}
+ for(const member of matches){
+  const row=document.createElement('div');
+  row.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #e4eaf0;flex-wrap:wrap';
+  const details=document.createElement('div');
+  details.style.cssText='display:flex;flex-direction:column;gap:4px;overflow-wrap:anywhere';
+  const email=document.createElement('strong');email.textContent=member.email;
+  const role=document.createElement('span');role.className='help';
+  const roleName=member.role==='admin'?'관리자':member.role==='reviewer'?'인허가팀':'일반 직원';
+  role.textContent=roleName+(member.mustChangePassword?' · 비밀번호 변경 대기':'')+
+    (member.created?' · 첫 등록 '+member.created.slice(0,10):'');
+  details.append(email,role);row.appendChild(details);
+  if(member.role!=='admin'){
+   const button=document.createElement('button');
+   button.type='button';button.className='btn soft';
+   const assigning=member.role==='requester';
+   button.textContent=assigning?'인허가팀으로 지정':'일반 직원으로 변경';
+   button.addEventListener('click',()=>{
+    roleChangeAccount=member;
+    roleChangeTo=assigning?'reviewer':'requester';
+    $('live-role-target').textContent=member.email;
+    $('live-role-action').textContent=assigning?'계정을 인허가팀으로 지정합니다.':'계정을 일반 직원으로 변경합니다.';
+    $('live-role-error').textContent='';
+    $('live-role-admin-password').value='';
+    $('live-role-form').hidden=false;
+    $('live-role-admin-password').focus();
+   });
+   row.appendChild(button);
+  }
+  root.appendChild(row);
+ }
+}
 function renderAdminUsers(){
+ renderRoleAccounts();
  const root=document.getElementById('live-reset-users');
  root.replaceChildren();
  const q=document.getElementById('live-reset-search').value.trim().toLowerCase();
@@ -708,17 +753,28 @@ if(liveMode){
   }catch(err){$('live-login-error').textContent=err.message}
   finally{button.disabled=false}
  });
- document.getElementById('live-admin-form').addEventListener('submit',async e=>{
+ document.getElementById('live-accounts-search').addEventListener('input',renderRoleAccounts);
+ document.getElementById('live-accounts-role-filter').addEventListener('change',renderRoleAccounts);
+ document.getElementById('live-role-cancel').addEventListener('click',()=>{
+  roleChangeAccount=null;roleChangeTo=null;
+  $('live-role-form').hidden=true;$('live-role-admin-password').value='';
+  $('live-role-error').textContent='';
+ });
+ document.getElementById('live-role-form').addEventListener('submit',async e=>{
   e.preventDefault();
-  const button=e.target.querySelector('button[type=submit]');button.disabled=true;
+  if(!roleChangeAccount||!roleChangeTo)return;
+  const target=roleChangeAccount;
+  const destination=roleChangeTo;
+  const button=$('live-role-submit');button.disabled=true;$('live-role-error').textContent='';
   try{
-   const email=$('live-new-email').value.trim()+'@hdc-resort.com';
-   await live.addUser(email,$('live-new-password').value,$('live-new-role').value);
-   $('live-new-password').value='';$('live-new-email').value='';
-   notice('계정이 등록됐습니다: '+email);
+   await live.updateUserRole(target.id,destination,$('live-role-admin-password').value);
+   $('live-role-admin-password').value='';
+   $('live-role-form').hidden=true;
+   roleChangeAccount=null;roleChangeTo=null;
    await refreshAdminUsers();
-  }catch(err){notice('계정 등록 실패: '+err.message)}
-  finally{button.disabled=false}
+   notice(target.email+'의 권한을 '+(destination==='reviewer'?'인허가팀':'일반 직원')+'으로 변경했습니다. 대상 직원은 다시 로그인해야 합니다.');
+  }catch(err){$('live-role-error').textContent=err.message}
+  finally{button.disabled=false;$('live-role-admin-password').value=''}
  });
  document.getElementById('live-reset-search').addEventListener('input',renderAdminUsers);
  document.getElementById('live-reset-cancel').addEventListener('click',()=>{
