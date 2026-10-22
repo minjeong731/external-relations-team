@@ -35,7 +35,7 @@ EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".pdf",
 MEDIA = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
          ".webp": "image/webp", ".gif": "image/gif", ".pdf": "application/pdf"}
 FAILED = {}
-TEST_SIGNUPS = {}
+TEST_AUTO_CREATED = {}
 
 def now():
     return dt.datetime.now(dt.timezone.utc).isoformat()
@@ -296,8 +296,6 @@ class Handler(BaseHTTPRequestHandler):
             with connection() as db:
                 if path == "/api/login":
                     return self.login(db, body)
-                if path == "/api/signup":
-                    return self.signup(db, body)
                 who = self.user(db)
                 if not who:
                     return self.json_response(401, {"error": "로그인이 필요합니다."})
@@ -339,32 +337,6 @@ class Handler(BaseHTTPRequestHandler):
             return self.json_response(500, {"error": "서버 처리 중 오류가 발생했습니다."})
         self.json_response(404, {"error": "API 경로를 찾을 수 없습니다."})
 
-    def signup(self, db, body):
-        # Only for a local PC pilot with fictional test records.
-        # A company-domain-looking address is not identity verification.
-        if os.environ.get("PERMIT_ENABLE_TEST_SELF_SIGNUP") != "1":
-            return self.json_response(403, {"error": "직원 직접 가입이 비활성화돼 있습니다."})
-        ip = self.client_address[0]
-        events = [t for t in TEST_SIGNUPS.get(ip, []) if time.monotonic() - t < 600]
-        if len(events) >= 10:
-            TEST_SIGNUPS[ip] = events
-            return self.json_response(429, {"error": "가입 시도가 너무 많습니다. 잠시 후 다시 시도하세요."})
-        email = field(body, "email", True, 120).lower()
-        password = field(body, "password", True, 200)
-        if not valid_email(email) or len(password) < 6:
-            raise ValueError("회사 이메일 ID와 6자 이상 비밀번호를 입력하세요.")
-        events.append(time.monotonic())
-        TEST_SIGNUPS[ip] = events
-        try:
-            db.execute("INSERT INTO users(email,passhash,role,created) VALUES(?,?,?,?)",
-                       (email, passhash(password), "requester", now()))
-            db.commit()
-        except sqlite3.IntegrityError:
-            raise ValueError("이미 가입된 계정입니다. 로그인해 주세요.")
-        return self.json_response(201, {"ok": True, "email": email,
-                                        "role": "requester",
-                                        "verified": False})
-
     def login(self, db, body):
         ip = self.client_address[0]
         attempts = [t for t in FAILED.get(ip, []) if time.monotonic() - t < 600]
@@ -374,6 +346,26 @@ class Handler(BaseHTTPRequestHandler):
         email = field(body, "email", True, 120).lower()
         password = field(body, "password", True, 200)
         record = db.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+        just_created = False
+        if record is None and os.environ.get("PERMIT_ENABLE_TEST_AUTO_ACCOUNT") == "1":
+            # This PC-pilot convenience is NOT mailbox/identity verification.
+            # The first person entering an unused address establishes its password.
+            if not valid_email(email) or len(password) < 6:
+                return self.json_response(400, {"error": "첫 로그인에서는 회사 이메일 ID와 6자 이상 비밀번호를 입력해 주세요."})
+            creations = [t for t in TEST_AUTO_CREATED.get(ip, []) if time.monotonic() - t < 600]
+            if len(creations) >= 6:
+                TEST_AUTO_CREATED[ip] = creations
+                return self.json_response(429, {"error": "새 계정 생성 시도가 너무 많습니다. 잠시 후 다시 시도하세요."})
+            creations.append(time.monotonic())
+            TEST_AUTO_CREATED[ip] = creations
+            try:
+                db.execute("INSERT INTO users(email,passhash,role,created) VALUES(?,?,?,?)",
+                           (email, passhash(password), "requester", now()))
+                db.commit()
+                just_created = True
+            except sqlite3.IntegrityError:
+                db.rollback()
+            record = db.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
         if not record or not verify(password, record["passhash"]):
             attempts.append(time.monotonic()); FAILED[ip] = attempts
             return self.json_response(401, {"error": "이메일 또는 비밀번호가 올바르지 않습니다."})
@@ -383,7 +375,7 @@ class Handler(BaseHTTPRequestHandler):
         db.execute("INSERT INTO sessions(token_hash,user_id,expires) VALUES(?,?,?)",
                    (hashlib.sha256(token.encode()).hexdigest(), record["id"], int(time.time())+43200))
         db.commit()
-        return self.json_response(200, {"token": token, "user": public_user(record)})
+        return self.json_response(200, {"token": token, "user": public_user(record), "created": just_created})
 
     def create_ticket(self, db, who, b):
         vals = {k: field(b,k,k in ("department","requester","date","title","question","current","purpose"),
