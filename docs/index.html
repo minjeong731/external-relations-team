@@ -585,14 +585,27 @@ function pagingControls(root, total, page, changePage) {
   root.querySelectorAll('button').forEach(button=>button.onclick=()=>changePage(current+(button.dataset.pg==='prev'?-1:1)));
 }
 function renderTeam(){document.querySelectorAll('[data-filter]').forEach(b=>b.classList.toggle('active',b.dataset.filter===filter));const term=$('team-search-demo').value.trim().toLowerCase();let a=requests.filter(r=>(filter==='전체'||r.status===filter)&&(!term||[r.id,r.title,r.department,r.requester].some(x=>String(x||'').toLowerCase().includes(term))));teamPage=Math.max(1,Math.min(teamPage,Math.ceil(a.length/5)||1));$('team-list').innerHTML=a.length?a.slice((teamPage-1)*5,teamPage*5).map(r=>listCard(r,true)).join(''):'<div class="empty">이 상태에 해당하는 요청이 없습니다.<br/>새 검토 요청에서 시연용 건을 접수해 보세요.</div>';pagingControls($('team-pager'),a.length,teamPage,n=>{teamPage=n;renderTeam()});$('team-detail').innerHTML=''}
+function recordYear(r){
+ // 접수일자를 우선 사용하고, 누락됐으면 생성일/접수번호에서 연도를 확인합니다.
+ for(const value of [r.date,r.created,r.id]){
+  const candidate=String(value??'').slice(0,4);
+  if(/^[0-9]{4}$/.test(candidate))return candidate;
+ }
+ return null;
+}
 function yearsDemo(selectId) {
  const el=$(selectId), chosen=el.value;
- el.innerHTML='<option value="all">전체 연도</option>'+[...new Set(requests.map(r=>String(r.date||r.created||'').slice(0,4)).filter(y=>/^\\d{4}$/.test(y)))].sort().reverse().map(y=>'<option value="'+escape(y)+'">'+escape(y)+'년</option>').join('');
- el.value=[...el.options].some(o=>o.value===chosen)?chosen:'all';
+ // 올해와 실제 접수기록이 있는 연도를 모두 표시합니다.
+ const years=new Set([String(new Date().getFullYear())]);
+ requests.forEach(r=>{const year=recordYear(r);if(year)years.add(year)});
+ const values=[...years].sort((a,b)=>Number(b)-Number(a));
+ el.innerHTML='<option value="all">전체 연도</option>'+
+  values.map(y=>'<option value="'+escape(y)+'">'+escape(y)+'년도</option>').join('');
+ el.value=values.includes(chosen)?chosen:'all';
 }
 function archiveFilteredDemo(){
  const y=$('archive-year-demo').value,term=$('archive-search-demo').value.trim().toLowerCase();
- return requests.filter(r=>(y==='all'||String(r.date||r.created||'').startsWith(y))&&(!term||[r.id,r.title,r.department,r.requester,r.category].some(x=>String(x||'').toLowerCase().includes(term))));
+ return requests.filter(r=>(y==='all'||recordYear(r)===y)&&(!term||[r.id,r.title,r.department,r.requester,r.category].some(x=>String(x||'').toLowerCase().includes(term))));
 }
 function renderArchiveDemo(){yearsDemo('archive-year-demo');const a=archiveFilteredDemo();const completed=a.filter(r=>r.status==='회신완료').length;archivePage=Math.max(1,Math.min(archivePage,Math.ceil(a.length/5)||1));$('archive-summary-demo').textContent='전체 '+a.length+'건 · 접수 '+a.filter(r=>r.status==='접수').length+'건 · 검토중 '+a.filter(r=>r.status==='검토중').length+'건 · 회신완료 '+completed+'건';$('archive-list-demo').innerHTML=a.length?a.slice((archivePage-1)*5,archivePage*5).map(r=>listCard(r,false).replace('data-view="mine"','data-view="archive"')).join(''):'<div class="empty">조회된 시연 이력이 없습니다.</div>';pagingControls($('archive-pager-demo'),a.length,archivePage,n=>{archivePage=n;renderArchiveDemo()});$('archive-detail').innerHTML='';}
 function renderHistoryDemo(){
@@ -600,7 +613,7 @@ function renderHistoryDemo(){
  $('history-category-demo').classList.toggle('active',historyMode==='category');
  $('history-team-demo').classList.toggle('active',historyMode==='team');
  const year=$('history-year-demo').value;
- const a=requests.filter(r=>year==='all'||String(r.date||r.created||'').startsWith(year));
+ const a=requests.filter(r=>year==='all'||recordYear(r)===year);
  const groups=new Map();
  for(const r of a){const group=historyMode==='category'?(r.category||'미분류'):(r.department||'부서 미입력');if(!groups.has(group))groups.set(group,[]);groups.get(group).push(r);}
  $('history-groups-demo').innerHTML=groups.size?[...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],'ko')).map(([k,v],i)=>'<div class="item-card"><div><h3>'+escape(k)+'</h3><div class="meta">문의 '+v.length+'건 · 확정 '+v.filter(r=>r.status==='회신완료').length+'건</div></div><button type="button" class="btn soft" data-history-group="'+i+'">조회 →</button></div>').join(''):'<div class="empty">현재 선택한 연도에는 시연 데이터가 없습니다.</div>';
