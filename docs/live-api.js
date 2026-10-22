@@ -42,6 +42,9 @@
     token = data.token;user = data.user;sessionStorage.setItem(TOKEN_KEY,token);
     return user;
   }
+  async function signup(email,password){
+    return request('/api/signup','POST',{email,password});
+  }
   async function restore() {
     if (!token) return null;
     try {
@@ -93,7 +96,7 @@
   async function addUser(email,password,role){
     return request('/api/users','POST',{email,password,role});
   }
-  window.PERMIT_LIVE = {enabled,login,restore,logout,load,create,upload,download,review,addUser,
+  window.PERMIT_LIVE = {enabled,login,signup,restore,logout,load,create,upload,download,review,addUser,
     get user(){return user},
     get connected(){return !!user}
   };
