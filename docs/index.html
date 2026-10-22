@@ -78,21 +78,16 @@
   <div class="demo-login-card">
     <div class="demo-login-brand"><div class="demo-login-symbol">P</div><div><strong>인허가 검토관리</strong><small>HDC Resort · 대외협력팀</small></div></div>
     <h1 id="live-login-heading">직원 계정 로그인</h1>
-    <p id="live-login-description">직원은 본인이 만든 계정으로 로그인합니다. 처음 이용하면 아래에서 직접 가입하세요.</p>
+    <p id="live-login-description">처음 방문하면 입력한 회사 이메일 ID와 비밀번호로 일반 직원 계정이 자동 생성됩니다. 다음부터는 같은 정보로 로그인하세요.</p>
     <form id="live-login-form">
       <div class="demo-login-label"><label for="live-email-prefix">회사 이메일</label></div>
       <div class="email-fixed"><input type="text" required id="live-email-prefix" autocomplete="username" placeholder="계정 ID" maxlength="64"><span class="email-domain">@hdc-resort.com</span></div>
       <div class="demo-login-label"><label for="live-password">비밀번호</label></div>
       <input type="password" class="input" required id="live-password" autocomplete="current-password" maxlength="200" placeholder="비밀번호" style="width:100%;margin-bottom:18px">
-      <div id="live-confirm-wrap" hidden>
-        <div class="demo-login-label"><label for="live-password-confirm">비밀번호 확인</label></div>
-        <input type="password" class="input" id="live-password-confirm" autocomplete="new-password" maxlength="200" placeholder="비밀번호를 한 번 더 입력하세요" style="width:100%;margin-bottom:18px">
-      </div>
       <button type="submit" class="demo-login-button primary" id="live-login-submit">로그인 →</button>
-      <button type="button" class="btn ghost" id="live-signup-toggle" style="display:block;margin:14px auto 4px">처음 이용하시나요? 직원 직접 가입하기</button>
       <p id="live-login-error" class="req" role="alert" style="margin-top:12px"></p>
     </form>
-    <div class="demo-login-hint">현재는 PC 사내망 시험 운영입니다. <strong>회사 이메일 ID 입력만으로 실제 재직 여부가 확인되지는 않습니다.</strong> 신규 가입은 일반 직원 권한만 부여하며, 실제 업무자료 대신 가상 테스트 자료만 사용하세요.</div>
+    <div class="demo-login-hint">현재는 PC 사내망 시험 운영입니다. <strong>회사 이메일 ID 입력만으로 실제 재직 여부가 확인되지는 않습니다.</strong> 첫 로그인에 생성된 계정은 일반 직원 권한만 부여되며, 다른 사람이 먼저 같은 ID를 등록할 위험이 있습니다. 실제 업무자료 대신 가상 테스트 자료만 사용하세요.</div>
   </div>
 </div>
 <div id="demo-login-gate" role="dialog" aria-modal="true" aria-labelledby="demo-login-title">
@@ -553,33 +548,15 @@ if(liveMode){
   if(/시안|시연|데모|브라우저/.test(el.textContent||'')){el.hidden=true;el.style.display='none'}
  });
  document.title='HDC Resort · 인허가 검토 통합관리';
- let liveSignupMode=false;
- document.getElementById('live-signup-toggle').addEventListener('click',()=>{
-  liveSignupMode=!liveSignupMode;
-  $('live-login-heading').textContent=liveSignupMode?'직원 직접 가입':'직원 계정 로그인';
-  $('live-login-description').textContent=liveSignupMode?'처음 사용할 때 본인이 회사 이메일 ID와 테스트용 비밀번호를 정해 주세요.':'직원은 본인이 만든 계정으로 로그인합니다. 처음 이용하면 아래에서 직접 가입하세요.';
-  $('live-confirm-wrap').hidden=!liveSignupMode;
-  $('live-password-confirm').required=liveSignupMode;
-  $('live-password').autocomplete=liveSignupMode?'new-password':'current-password';
-  $('live-password').minLength=liveSignupMode?6:0;
-  $('live-login-submit').textContent=liveSignupMode?'직원 계정 만들기 →':'로그인 →';
-  $('live-signup-toggle').textContent=liveSignupMode?'기존 계정이 있나요? 로그인으로 돌아가기':'처음 이용하시나요? 직원 직접 가입하기';
-  $('live-login-error').textContent='';
- });
  document.getElementById('live-login-form').addEventListener('submit',async e=>{
   e.preventDefault();
   const button=$('live-login-submit');button.disabled=true;$('live-login-error').textContent='';
   try{
     const email=$('live-email-prefix').value.trim()+'@hdc-resort.com';
     const password=$('live-password').value;
-    if(liveSignupMode){
-      if(password.length<6)throw Error('비밀번호는 최소 6자로 입력해 주세요.');
-      if(password!==$('live-password-confirm').value)throw Error('비밀번호 확인이 일치하지 않습니다.');
-      await live.signup(email,password);
-    }
     const user=await live.login(email,password);
     await enterLiveMode(user);
-    if(liveSignupMode)notice('일반 직원 테스트 계정이 생성됐습니다.');
+    if(user.firstLoginCreated)notice('첫 로그인으로 일반 직원 테스트 계정이 자동 생성됐습니다.');
   }catch(err){$('live-login-error').textContent=err.message}
   finally{button.disabled=false}
  });
