@@ -20,7 +20,7 @@ class LanServerTests(unittest.TestCase):
         app.BASE = Path(cls.temp.name)
         app.DB_PATH = app.BASE / "permit.sqlite3"
         app.FILES = app.BASE / "attachments"
-        os.environ["PERMIT_ADMIN_PASSWORD"] = "test-admin-password-longer-than-twelve"
+        os.environ["PERMIT_ADMIN_PASSWORD"] = "abcdef"
         app.boot()
         os.environ.pop("PERMIT_ADMIN_PASSWORD", None)
         cls.http = ThreadingHTTPServer(("127.0.0.1", 0), LANHandler)
@@ -57,7 +57,7 @@ class LanServerTests(unittest.TestCase):
 
     def test_post_login_from_lan_origin_and_db_reopen(self):
         body = json.dumps({"email": "minjeong.kang@hdc-resort.com",
-                           "password": "test-admin-password-longer-than-twelve"}).encode()
+                           "password": "abcdef"}).encode()
         req = Request(self.base + "/api/login", body,
                       headers={"Content-Type": "application/json", "Origin": self.base})
         with urlopen(req, timeout=5) as response:
