@@ -108,9 +108,16 @@ def boot():
           id INTEGER PRIMARY KEY, ticket_id TEXT NOT NULL, actor_id INTEGER NOT NULL,
           action TEXT NOT NULL, occurred TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS security_events (
+          id INTEGER PRIMARY KEY, actor_id INTEGER NOT NULL, target_id INTEGER NOT NULL,
+          action TEXT NOT NULL, occurred TEXT NOT NULL
+        );
         CREATE INDEX IF NOT EXISTS idx_tickets_owner ON tickets(owner_id);
         CREATE INDEX IF NOT EXISTS idx_attach_ticket ON attachments(ticket_id,id);
         """)
+        columns = {r["name"] for r in db.execute("PRAGMA table_info(users)")}
+        if "must_change_password" not in columns:
+            db.execute("ALTER TABLE users ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0")
         admin_email = os.environ.get("PERMIT_ADMIN_EMAIL", "minjeong.kang@hdc-resort.com").strip().lower()
         existing = db.execute("SELECT COUNT(*) FROM users").fetchone()[0]
         if not existing:
@@ -122,7 +129,8 @@ def boot():
     logging.info("SQLite initialized at %s", DB_PATH)
 
 def public_user(u):
-    return {"id": u["id"], "email": u["email"], "role": u["role"]}
+    return {"id": u["id"], "email": u["email"], "role": u["role"],
+            "mustChangePassword": bool(u["must_change_password"])}
 
 def ticket_for(db, r):
     d = dict(r)
@@ -222,7 +230,7 @@ class Handler(BaseHTTPRequestHandler):
             return None
         token = auth[7:]
         digest = hashlib.sha256(token.encode()).hexdigest()
-        return db.execute("""SELECT u.id,u.email,u.role FROM users u
+        return db.execute("""SELECT u.id,u.email,u.role,u.must_change_password FROM users u
           JOIN sessions s ON s.user_id=u.id
           WHERE s.token_hash=? AND s.expires>?""", (digest, int(time.time()))).fetchone()
 
@@ -264,6 +272,17 @@ class Handler(BaseHTTPRequestHandler):
                 return self.json_response(401, {"error": "로그인이 필요합니다."})
             if path == "/api/me":
                 return self.json_response(200, {"user": public_user(who)})
+            if who["must_change_password"]:
+                return self.json_response(403, {"error": "임시 비밀번호를 변경한 후 이용할 수 있습니다."})
+            if path == "/api/users":
+                if who["role"] != "admin":
+                    return self.json_response(403, {"error": "관리자 권한이 필요합니다."})
+                rows = db.execute("""SELECT id,email,role,created,must_change_password
+                                     FROM users ORDER BY email""").fetchall()
+                return self.json_response(200, {"users": [
+                    {"id": row["id"], "email": row["email"], "role": row["role"],
+                     "mustChangePassword": bool(row["must_change_password"])}
+                    for row in rows]})
             if path == "/api/tickets":
                 if who["role"] in ("reviewer", "admin"):
                     rows = db.execute("SELECT * FROM tickets ORDER BY created DESC").fetchall()
@@ -299,6 +318,10 @@ class Handler(BaseHTTPRequestHandler):
                 who = self.user(db)
                 if not who:
                     return self.json_response(401, {"error": "로그인이 필요합니다."})
+                if path == "/api/change-temporary-password":
+                    return self.change_temporary_password(db, who, body)
+                if who["must_change_password"] and path != "/api/logout":
+                    return self.json_response(403, {"error": "임시 비밀번호 변경이 필요합니다."})
                 if path == "/api/logout":
                     token = self.headers.get("Authorization", "")[7:]
                     db.execute("DELETE FROM sessions WHERE token_hash=?",
@@ -320,6 +343,9 @@ class Handler(BaseHTTPRequestHandler):
                         raise ValueError("이미 등록된 계정입니다.")
                     db.commit()
                     return self.json_response(201, {"ok": True, "email": email})
+                m = re.fullmatch(r"/api/users/(\d+)/reset-password", path)
+                if m:
+                    return self.reset_password(db, who, int(m[1]), body)
                 if path == "/api/tickets":
                     return self.create_ticket(db, who, body)
                 m = re.fullmatch(r"/api/tickets/(\d{4}-\d+)/attachments", path)
@@ -336,6 +362,56 @@ class Handler(BaseHTTPRequestHandler):
             logging.exception("Server error")
             return self.json_response(500, {"error": "서버 처리 중 오류가 발생했습니다."})
         self.json_response(404, {"error": "API 경로를 찾을 수 없습니다."})
+
+    def reset_password(self, db, who, target_id, body):
+        if who["role"] != "admin":
+            return self.json_response(403, {"error": "관리자만 비밀번호를 초기화할 수 있습니다."})
+        # A fresh confirmation of the current administrator password is mandatory.
+        admin_password = field(body, "adminPassword", True, 200)
+        admin_record = db.execute("SELECT passhash FROM users WHERE id=?",
+                                  (who["id"],)).fetchone()
+        if not admin_record or not verify(admin_password, admin_record["passhash"]):
+            return self.json_response(403, {"error": "관리자 비밀번호가 일치하지 않습니다."})
+        target = db.execute("SELECT id,email,role FROM users WHERE id=?", (target_id,)).fetchone()
+        if not target:
+            return self.json_response(404, {"error": "직원 계정을 찾을 수 없습니다."})
+        if target["role"] == "admin":
+            return self.json_response(403, {"error": "관리자 계정은 이 화면에서 초기화할 수 없습니다."})
+        alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789"
+        temporary = "".join(secrets.choice(alphabet) for _ in range(12))
+        db.execute("UPDATE users SET passhash=?, must_change_password=1 WHERE id=?",
+                   (passhash(temporary), target_id))
+        db.execute("DELETE FROM sessions WHERE user_id=?", (target_id,))
+        db.execute("""INSERT INTO security_events(actor_id,target_id,action,occurred)
+                      VALUES(?,?,?,?)""", (who["id"],target_id,"비밀번호 초기화",now()))
+        db.commit()
+        # One-time secret: sent only in this response, never persisted as plaintext.
+        return self.json_response(200, {"email": target["email"],
+                                        "temporaryPassword": temporary,
+                                        "mustChangePassword": True})
+
+    def change_temporary_password(self, db, who, body):
+        if not who["must_change_password"]:
+            return self.json_response(403, {"error": "임시 비밀번호 변경 대상이 아닙니다."})
+        new_password = field(body, "newPassword", True, 200)
+        if len(new_password) < 6:
+            raise ValueError("새 비밀번호는 6자 이상이어야 합니다.")
+        stored = db.execute("SELECT passhash FROM users WHERE id=?",
+                            (who["id"],)).fetchone()
+        if verify(new_password, stored["passhash"]):
+            raise ValueError("임시 비밀번호와 다른 비밀번호를 설정해 주세요.")
+        db.execute("UPDATE users SET passhash=?,must_change_password=0 WHERE id=?",
+                   (passhash(new_password), who["id"]))
+        current_token = self.headers.get("Authorization", "")[7:]
+        current_hash = hashlib.sha256(current_token.encode()).hexdigest()
+        db.execute("DELETE FROM sessions WHERE user_id=? AND token_hash!=?",
+                   (who["id"], current_hash))
+        db.execute("""INSERT INTO security_events(actor_id,target_id,action,occurred)
+                      VALUES(?,?,?,?)""",(who["id"],who["id"],"임시 비밀번호 변경",now()))
+        db.commit()
+        updated = db.execute("""SELECT id,email,role,must_change_password FROM users
+                                WHERE id=?""", (who["id"],)).fetchone()
+        return self.json_response(200, {"user": public_user(updated)})
 
     def login(self, db, body):
         ip = self.client_address[0]
