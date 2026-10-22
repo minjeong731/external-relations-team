@@ -368,6 +368,10 @@ class Handler(BaseHTTPRequestHandler):
             record = db.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
         if not record or not verify(password, record["passhash"]):
             attempts.append(time.monotonic()); FAILED[ip] = attempts
+            # In the test-only PC mode, explicitly tell employees when the
+            # password for their existing account does not match.
+            if record and os.environ.get("PERMIT_ENABLE_TEST_AUTO_ACCOUNT") == "1":
+                return self.json_response(401, {"error": "비밀번호가 일치하지 않습니다. 처음 로그인할 때 설정한 비밀번호를 입력해 주세요."})
             return self.json_response(401, {"error": "이메일 또는 비밀번호가 올바르지 않습니다."})
         FAILED.pop(ip, None)
         token = secrets.token_urlsafe(36)
