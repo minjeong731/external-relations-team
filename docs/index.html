@@ -13,8 +13,9 @@
 
 /* Public UI-preview login gate; this is NOT authentication. */
 #demo-login-gate{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:24px;background:linear-gradient(155deg,#e8f0f5 0%,#f5f8fb 55%,#e7f4f3 100%);overflow-y:auto}
-#demo-login-gate[hidden],#live-login-gate[hidden]{display:none!important}
-#live-login-gate{position:fixed;inset:0;z-index:1050;display:flex;align-items:center;justify-content:center;padding:24px;background:linear-gradient(155deg,#e8f0f5 0%,#f5f8fb 55%,#e7f4f3 100%);overflow-y:auto}
+#demo-login-gate[hidden],#live-login-gate[hidden],#live-change-gate[hidden]{display:none!important}
+#live-login-gate,#live-change-gate{position:fixed;inset:0;z-index:1050;display:flex;align-items:center;justify-content:center;padding:24px;background:linear-gradient(155deg,#e8f0f5 0%,#f5f8fb 55%,#e7f4f3 100%);overflow-y:auto}
+#live-change-gate{z-index:1060}
 .demo-login-card{width:min(100%,455px);background:#fff;border:1px solid #dce5eb;border-radius:18px;box-shadow:0 20px 60px rgba(20,47,73,.12);padding:33px}
 .demo-login-brand{display:flex;align-items:center;gap:12px;margin-bottom:24px}
 .demo-login-symbol{width:48px;height:48px;border-radius:13px;background:#1a7380;color:white;display:grid;place-items:center;font-size:23px;font-weight:900}
@@ -88,8 +89,25 @@
       <button type="submit" class="demo-login-button primary" id="live-login-submit">로그인 →</button>
       <p id="live-login-error" class="req" role="alert" style="margin-top:12px"></p>
     </form>
+    <p class="help" style="margin-top:12px"><strong>비밀번호를 잊으셨나요?</strong> 인허가팀 관리자에게 초기화를 요청하세요. 임시 비밀번호를 받으면 로그인 후 새 비밀번호를 설정할 수 있습니다.</p>
     <div class="demo-login-hint">현재는 PC 사내망 시험 운영입니다. <strong>회사 이메일 ID 입력만으로 실제 재직 여부가 확인되지는 않습니다.</strong> 첫 로그인에 생성된 계정은 일반 직원 권한만 부여되며, 다른 사람이 먼저 같은 ID를 등록할 위험이 있습니다. 실제 업무자료 대신 가상 테스트 자료만 사용하세요.</div>
   </div>
+</div>
+<div id="live-change-gate" hidden role="dialog" aria-modal="true" aria-labelledby="live-change-title">
+ <div class="demo-login-card">
+  <div class="demo-login-brand"><div class="demo-login-symbol">P</div><div><strong>인허가 검토관리</strong><small>임시 비밀번호 변경</small></div></div>
+  <h1 id="live-change-title">새 비밀번호 설정</h1>
+  <p><strong id="live-change-email"></strong> 계정은 관리자가 비밀번호를 초기화했어요. 업무화면을 이용하기 전에 새 비밀번호를 설정하세요.</p>
+  <form id="live-change-form">
+   <div class="demo-login-label"><label for="live-change-new">새 비밀번호 (6자 이상)</label></div>
+   <input id="live-change-new" class="input" type="password" required minlength="6" maxlength="200" autocomplete="new-password" style="width:100%">
+   <div class="demo-login-label"><label for="live-change-confirm">새 비밀번호 확인</label></div>
+   <input id="live-change-confirm" class="input" type="password" required minlength="6" maxlength="200" autocomplete="new-password" style="width:100%;margin-bottom:16px">
+   <button type="submit" class="demo-login-button primary" id="live-change-submit">비밀번호 변경 후 계속 →</button>
+   <button type="button" class="btn ghost" id="live-change-logout" style="display:block;margin:12px auto">로그아웃</button>
+   <p id="live-change-error" class="req" role="alert" style="margin-top:12px"></p>
+  </form>
+ </div>
 </div>
 <div id="demo-login-gate" role="dialog" aria-modal="true" aria-labelledby="demo-login-title">
   <div class="demo-login-card">
@@ -178,7 +196,24 @@
    <div class="field"><label for="live-new-role">계정 권한</label><select class="input" id="live-new-role"><option value="reviewer">인허가팀</option><option value="requester">일반 직원 (관리자 대신 등록 시)</option></select></div></div>
    <div class="field" style="margin-top:12px"><label for="live-new-password">최초 비밀번호 (6자 이상)</label><input id="live-new-password" type="password" minlength="6" required class="input" autocomplete="new-password"></div>
    <div class="action-row"><button type="submit" class="btn primary">계정 등록</button></div>
-  </form><p class="help">일반 직원은 로그인 화면에서 직접 가입할 수 있어요. 인허가팀 권한만 관리자가 발급하세요. 비밀번호는 사용자에게 별도로 안전하게 전달해야 합니다.</p></div>
+  </form><p class="help">일반 직원은 첫 로그인 시 자동으로 계정이 생성됩니다. 인허가팀 계정은 관리자가 발급해 주세요.</p></div>
+  <div class="panel-body" id="live-reset-panel" style="border-top:1px solid #e4eaf0">
+   <div class="section-heading" style="margin-bottom:8px">직원 비밀번호 초기화 · 관리자 전용</div>
+   <p class="help">직원이 비밀번호를 잊었다면 본인 확인 후 계정을 선택하고 초기화하세요. 접수 및 회신 기록은 삭제되지 않습니다.</p>
+   <div class="field"><label for="live-reset-search">직원 이메일 검색</label><input id="live-reset-search" class="input" placeholder="직원 이메일 또는 ID 검색" autocomplete="off"></div>
+   <div id="live-reset-users" style="margin:12px 0 16px"></div>
+   <form id="live-reset-form" hidden>
+    <p>초기화 대상: <strong id="live-reset-target"></strong></p>
+    <div class="field"><label for="live-reset-admin-password">관리자 본인 비밀번호 확인</label><input id="live-reset-admin-password" class="input" type="password" required autocomplete="current-password" placeholder="관리자 비밀번호를 입력하세요"></div>
+    <div class="action-row"><button type="submit" class="btn primary" id="live-reset-submit">선택 직원 비밀번호 초기화</button><button type="button" class="btn ghost" id="live-reset-cancel">취소</button></div>
+   </form>
+   <div id="live-reset-result" hidden style="margin-top:16px;padding:16px;border:1px solid #d8e7e8;border-radius:10px">
+    <strong id="live-reset-result-email"></strong> 직원의 임시 비밀번호
+    <input id="live-reset-temp" class="input" type="text" readonly style="display:block;width:100%;margin:10px 0" aria-label="초기화된 임시 비밀번호">
+    <p class="help">이 임시 비밀번호는 지금 한 번만 표시됩니다. 클릭해서 선택한 후 복사하여 직원에게 직접 전달하세요. 직원은 로그인 직후 새 비밀번호로 변경해야 합니다.</p>
+    <button type="button" class="btn ghost" id="live-reset-done">확인 · 임시 비밀번호 숨기기</button>
+   </div>
+  </div>
  </div>
 </section>
 
