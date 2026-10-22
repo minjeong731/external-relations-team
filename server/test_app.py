@@ -12,7 +12,7 @@ class TestSharedServer(unittest.TestCase):
   cls.tmp=tempfile.TemporaryDirectory()
   app.BASE=Path(cls.tmp.name);app.DB_PATH=app.BASE/"test.sqlite3";app.FILES=app.BASE/"attachments"
   os.environ["PERMIT_ADMIN_EMAIL"]="minjeong.kang@hdc-resort.com"
-  os.environ["PERMIT_ADMIN_PASSWORD"]="test-only-strong-password-123"
+  os.environ["PERMIT_ADMIN_PASSWORD"]="abcdef"
   app.boot()
   cls.server=ThreadingHTTPServer(("127.0.0.1",0),app.Handler)
   cls.host="http://127.0.0.1:"+str(cls.server.server_port)
@@ -36,13 +36,15 @@ class TestSharedServer(unittest.TestCase):
    return ex.code,json.loads(ex.read())
  def test_staff_share_access_and_images(self):
   code,_=self.call("/api/tickets");self.assertEqual(code,401)
-  code,a=self.call("/api/login",{"email":"minjeong.kang@hdc-resort.com","password":"test-only-strong-password-123"})
+  code,a=self.call("/api/login",{"email":"minjeong.kang@hdc-resort.com","password":"abcdef"})
   self.assertEqual(code,200);admin=a["token"]
+  status,_=self.call("/api/users",{"email":"short@hdc-resort.com","password":"abcde","role":"requester"},admin)
+  self.assertEqual(status,400)
   for email,role in [("worker.a@hdc-resort.com","requester"),("worker.b@hdc-resort.com","requester"),("reviewer@hdc-resort.com","reviewer")]:
-   code,_=self.call("/api/users",{"email":email,"password":"unique-password-12345","role":role},admin)
+   code,_=self.call("/api/users",{"email":email,"password":"qwerty","role":role},admin)
    self.assertEqual(code,201)
   def login(email):
-   code,out=self.call("/api/login",{"email":email,"password":"unique-password-12345"})
+   code,out=self.call("/api/login",{"email":email,"password":"qwerty"})
    self.assertEqual(code,200);return out["token"]
   ta,tb,tr=login("worker.a@hdc-resort.com"),login("worker.b@hdc-resort.com"),login("reviewer@hdc-resort.com")
   form={"department":"시설팀","requester":"직원A","date":"2026-10-21","title":"건축물 변경","site":"A현장","category":"건축","question":"검토요청","current":"현황","purpose":"사유"}
