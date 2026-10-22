@@ -36,6 +36,8 @@ MEDIA = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
          ".webp": "image/webp", ".gif": "image/gif", ".pdf": "application/pdf"}
 FAILED = {}
 TEST_AUTO_CREATED = {}
+# The reviewer classifies each ticket while writing its response, not the requester.
+REVIEW_CATEGORIES = ("건축·설계변경", "조성계획·사업계획", "체육시설업", "관광진흥법", "기타")
 
 def now():
     return dt.datetime.now(dt.timezone.utc).isoformat()
@@ -510,7 +512,7 @@ class Handler(BaseHTTPRequestHandler):
         db.execute("""INSERT INTO tickets(id,owner_id,department,requester,email,date,title,site,category,question,current,purpose,created)
                       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                    (ticket_id,who["id"],vals["department"],vals["requester"],who["email"],
-                    vals["date"],vals["title"],vals["site"],vals["category"],
+                    vals["date"],vals["title"],vals["site"],"",
                     vals["question"],vals["current"],vals["purpose"],now()))
         audit(db, ticket_id, who, "요청접수")
         db.commit()
@@ -556,8 +558,12 @@ class Handler(BaseHTTPRequestHandler):
         if row["status"] == "회신완료":
             return self.json_response(409, {"error": "완료된 회신은 덮어쓸 수 없습니다."})
         completed = b.get("complete") is True
-        fields = {k: field(b,k,k=="assigned",3000) for k in
-                  ("assigned","result","law","action","period")}
+        fields = {k: field(b,k,False,3000) for k in ("result","law","action","period")}
+        category = field(b, "category", False, 120)
+        if category and category not in REVIEW_CATEGORIES:
+            raise ValueError("올바른 검토분야를 선택해 주세요.")
+        if completed and not category:
+            raise ValueError("회신을 완료하려면 검토분야를 선택해 주세요.")
         if completed and not fields["result"]:
             raise ValueError("회신을 완료하려면 검토 결과가 필요합니다.")
         db.execute("""INSERT INTO replies(ticket_id,result,law,action,period,sent_at)
@@ -567,8 +573,13 @@ class Handler(BaseHTTPRequestHandler):
                       sent_at=excluded.sent_at""",
                    (ticket_id,fields["result"],fields["law"],fields["action"],
                     fields["period"],now() if completed else None))
-        db.execute("UPDATE tickets SET assigned=?,status=? WHERE id=?",
-                   (fields["assigned"],"회신완료" if completed else "검토중",ticket_id))
+        # No assignment step. Every authenticated reviewer may respond.
+        # On completion record the actual authenticated reviewer account.
+        # Preserve existing categories when a draft omits the classification.
+        db.execute("UPDATE tickets SET assigned=?,category=?,status=? WHERE id=?",
+                   (who["email"] if completed else row["assigned"],
+                    category or row["category"],
+                    "회신완료" if completed else "검토중",ticket_id))
         audit(db,ticket_id,who,"회신확정" if completed else "검토수정")
         db.commit()
         row = db.execute("SELECT * FROM tickets WHERE id=?", (ticket_id,)).fetchone()
