@@ -66,6 +66,7 @@ PC 서버가 켜지면 접속 주소가 표시되고 내 PC에서는 `http://127
 | `PERMIT_SMTP_USER` | 회사에서 발급한 발송 계정 (SMTP 인증 시) |
 | `PERMIT_SMTP_PASSWORD` | 발송 인증 비밀정보 (SMTP 인증 시) |
 | `PERMIT_MAIL_FROM` | 승인된 시스템 발신주소 (`@hdc-resort.com`) |
+| `PERMIT_MAIL_FROM_NAME` | 수신자에게 표시할 발신자 이름 (기본값 `인허가 검토 시스템`) |
 | `PERMIT_TEAM_MAIL` | 알림을 받을 인허가팀 공용주소 (`@hdc-resort.com`) |
 
 현재 PC 테스트 실행기는 `PERMIT_ENABLE_TEST_AUTO_ACCOUNT=1`로 실행되기 때문에 **메일 설정을 임의로 넣더라도 실제 발송하지 않도록 차단합니다.** 이메일 소유권을 검증하지 않는 자동계정 상태에서 메일을 무단 전송하지 않도록 하기 위한 조치입니다.
