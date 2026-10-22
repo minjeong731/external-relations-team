@@ -281,6 +281,7 @@ class Handler(BaseHTTPRequestHandler):
                                      FROM users ORDER BY email""").fetchall()
                 return self.json_response(200, {"users": [
                     {"id": row["id"], "email": row["email"], "role": row["role"],
+                     "created": row["created"],
                      "mustChangePassword": bool(row["must_change_password"])}
                     for row in rows]})
             if path == "/api/tickets":
