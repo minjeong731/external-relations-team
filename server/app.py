@@ -20,7 +20,15 @@ import sqlite3
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit
-from mail_delivery import send_event
+# Legacy PC launchers download only the original file list. Do not let
+# an optional mail connector break the existing shared-storage demo.
+try:
+    from mail_delivery import send_event
+except ModuleNotFoundError as exc:
+    if exc.name != "mail_delivery":
+        raise
+    def send_event(event, ticket):
+        return ("not_configured", "", "메일 연동 파일을 포함한 운영환경이 필요합니다.")
 
 BASE = Path(os.environ.get("PERMIT_DATA_DIR", str(Path.home() / ".hdc-permit-data"))).resolve()
 DB_PATH = BASE / "permit.sqlite3"
